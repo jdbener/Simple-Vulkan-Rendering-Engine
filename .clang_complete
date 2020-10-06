@@ -1,0 +1,8 @@
+-std=c++17
+-Isubprojects/vpp/include
+-Isubprojects/nytl
+-Isubprojects/dlg/include
+-Isubprojects/vkpp/include
+-Isubprojects/katachi/include
+-Isubprojects/rvg/include
+-Ibuild/subprojects/vpp/include
