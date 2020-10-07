@@ -21,9 +21,18 @@ dep_vpp = dependency('vpp', fallback: ['vpp', 'vpp_dep'], default_options: ['def
 dep_rvg = dependency('rvg', fallback: ['rvg', 'rvg_dep'], default_options: ['default_library=static'])
 deps_rvg = [dep_dlg, dep_nytl, dep_vkpp, dep_katachi, dep_vpp, dep_rvg]
 
+engine_inc = include_directories('.')
+engine_dependancies = [dep_vulkan, dep_glfw, deps_rvg]
+
+subdir('engine')
+engine_dep = declare_dependency(
+	link_with: engine,
+	dependencies: engine_dependancies,
+	include_directories: engine_inc)
+
 src = ['main.cpp']
 exe_main = executable('main', src,
-	dependencies: [dep_vulkan, dep_glfw, deps_rvg]
+	dependencies: [engine_dependancies, engine_dep]
 )
 
 test('simple test', exe_main)
