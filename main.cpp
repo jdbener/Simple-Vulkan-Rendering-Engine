@@ -1,5 +1,6 @@
 #include "engine/util/timer.h"
 
+#include "engine/util/vulkan.hpp"
 #include "engine/window.hpp"
 
 std::ostream& operator <<(std::ostream& s, std::pair<int, int> size){
@@ -8,21 +9,30 @@ std::ostream& operator <<(std::ostream& s, std::pair<int, int> size){
 }
 
 int main(){
-
     vk::ApplicationInfo appInfo("Project Delta", GAME_VERSION, "Delta Engine", ENGINE_VERSION, VK_API_VERSION_1_1);
-    //vk::Instance i = vk::createInstance({{}, &appInfo, /*Layer Count*/ 0, /*Layer Names*/ nullptr, /*Extension Count*/ 0, /*Extension Names*/ nullptr});*/
 
-    vpp::Instance instance({{}, &appInfo, /*Layer Count*/ 0, /*Layer Names*/ nullptr, /*Extension Count*/ 0, /*Extension Names*/ nullptr});
+    std::vector<const char*> layers = validateLayers({"VK_LAYER_KHRONOS_validation"});
+    std::vector<const char*> extensions = validateExtensions(Window::requiredVulkanExtensions()
+        + std::vector<const char*>{VK_EXT_DEBUG_UTILS_EXTENSION_NAME});
+
+    vpp::Instance instance({{}, &appInfo,
+        /*Layer Count*/ (uint32_t) layers.size(),
+        /*Layer Names*/ layers.data(),
+        /*Extension Count*/ (uint32_t) extensions.size(),
+        /*Extension Names*/ extensions.data()});
+    vpp::DebugMessenger debugMsg(instance);
 
     Window w(instance, 800, 600, str(27));
 
-    std::vector<const char*> ext = Window::vulkanExtensions();
 
-    std::cout << (str("0F2a") + " - " + str::precision(7, 5) + " - " +  str::base(32, 16)) << std::endl;
+
     str s = u8"This is a string which I am writing. μ";
+    w.setName(s);
+    w.setSize(400, 400);
 
     do {
-        std::cout << w.getTotalSize() << " - " << w.getFrameSize() << std::endl;
+        //std::cout << w.getTotalSize() << " - " << w.getFrameSize() << std::endl;
+        w.swapBuffers();
         Window::waitEvents();
         //Window::pollEvents();
     } while(!Window::allWindowsClosed());
