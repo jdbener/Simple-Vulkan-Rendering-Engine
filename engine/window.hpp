@@ -1,9 +1,7 @@
 #pragma once
 
 #include "util/string.hpp"
-
-// Vulkan
-#include <vpp/vpp.hpp>
+#include "util/vulkan.hpp"
 
 class GLFWwindow;
 
@@ -36,16 +34,16 @@ public:
 private:
     // Tracks if GLFW has been initalized
     static bool glfwInitalized;
-    // Track the number of created windows and currently open windows
-    static size_t windowCount, openCount;
+    // Track the number of created windows
+    static size_t windowCount;
     // Used to store the memory of the vulkan logical device we create for this window
     std::unique_ptr<vpp::Device> device = nullptr;
     str name;
-    bool closed = false;
-
 
     friend void _WindowCloseCallback(GLFWwindow*);
     friend void _WindowResizeCallback(GLFWwindow*, int, int);
+
+    vk::SwapchainCreateInfoKHR swapchainProperties(const vk::PhysicalDevice pd, const vk::SurfaceKHR surface, vk::SwapchainKHR oldSwapchain = {});
 protected:
     GLFWwindow* window = nullptr;
     vpp::Surface surface;
@@ -69,15 +67,14 @@ public:
     std::string_view getName() const;
 
     vpp::Surface& getSurface(); // Needed?
-    void recreateSurface(vpp::Instance&);
     vpp::Swapchain& getSwapchain();
     void recreateSwapchain(DeviceCreateInfo deviceInfo = {});
 
     void swapBuffers();
 
     bool isDestroyed() const;
-    bool shouldClose() const;
     bool isClosed() const;
+    bool shouldClose() const;
     bool close();
 
 public:

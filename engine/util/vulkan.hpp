@@ -5,7 +5,7 @@
 // Vulkan
 #include <vpp/vpp.hpp>
 
-std::vector<const char*> validateLayers(std::vector<const char*> layers){
+inline std::vector<const char*> validateLayers(std::vector<const char*> layers){
     std::vector<vk::LayerProperties> availableLayers = vk::enumerateInstanceLayerProperties();
     for(size_t i = 0; i < layers.size(); i++){
         bool found = false;
@@ -23,7 +23,7 @@ std::vector<const char*> validateLayers(std::vector<const char*> layers){
     return layers;
 }
 
-std::vector<const char*> validateExtensions(std::vector<const char*> extensions){
+inline std::vector<const char*> validateExtensions(std::vector<const char*> extensions){
     std::vector<vk::ExtensionProperties> availableExtensions = vk::enumerateInstanceExtensionProperties(nullptr);
     for(size_t i = 0; i < extensions.size(); i++){
         bool found = false;

@@ -23,6 +23,8 @@ int main(){
     vpp::DebugMessenger debugMsg(instance);
 
     Window w(instance, 800, 600, str(27));
+    Window w2(instance, 800, 600);
+
 
 
 
@@ -33,9 +35,10 @@ int main(){
     do {
         //std::cout << w.getTotalSize() << " - " << w.getFrameSize() << std::endl;
         w.swapBuffers();
-        Window::waitEvents();
-        //Window::pollEvents();
-    } while(!Window::allWindowsClosed());
+        //Window::waitEvents();
+        Window::pollEvents();
+    // Wait for main window to be closed
+    } while(!w.isClosed());
 
     //std::cout << std::boolalpha << w.isDestroyed() << " - " << w.isClosed() << std::endl;
 
