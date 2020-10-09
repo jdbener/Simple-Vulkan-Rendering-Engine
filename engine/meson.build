@@ -1,5 +1,7 @@
 engine_sources = [
-  'window.cpp'
+  'vulkan/common.cpp',
+  'vulkan/shader.cpp',
+  'window.cpp',
 
 ]
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "util/string.hpp"
-#include "util/vulkan.hpp"
+#include "vulkan/common.hpp"
 
 class GLFWwindow;
 

@@ -11,6 +11,8 @@ dep_thread = dependency('threads')
 dep_vulkan = dependency('vulkan')
 
 dep_glfw = dependency('glfw3')
+dep_glslang = [dependency('glslang'), dependency('spirv')]
+dep_glm = dependency('glm')
 
 # RVG (Statically linked)
 dep_dlg = dependency('dlg', fallback: ['dlg', 'dlg_dep'], default_options: ['default_library=static'])
@@ -22,7 +24,7 @@ dep_rvg = dependency('rvg', fallback: ['rvg', 'rvg_dep'], default_options: ['def
 deps_rvg = [dep_dlg, dep_nytl, dep_vkpp, dep_katachi, dep_vpp, dep_rvg]
 
 engine_inc = include_directories('.')
-engine_dependancies = [dep_vulkan, dep_glfw, deps_rvg]
+engine_dependancies = [dep_vulkan, dep_glfw, dep_glslang, deps_rvg]
 
 subdir('engine')
 engine_dep = declare_dependency(

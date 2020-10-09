@@ -7,3 +7,4 @@
 -Isubprojects/rvg/include
 -Ibuild/subprojects/vpp/include
 -I/usr/include
+-I.
