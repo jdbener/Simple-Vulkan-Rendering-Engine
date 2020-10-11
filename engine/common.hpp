@@ -29,3 +29,5 @@ std::ostream& operator<<(std::ostream& s, std::vector<T> out){
     }
     return s << "]";
 }
+
+std::vector<std::byte> readStream(std::istream& f, size_t start = 0, long len = -1);

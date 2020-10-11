@@ -55,8 +55,11 @@ Window::Window(vpp::Instance& instance, int width, int height, str _name, Device
     surface = vpp::Surface(instance, (vk::SurfaceKHR) surf);
 
     // Create the swapchain which will feed images to the surface
-    if(deviceInfo.valid == DeviceCreateInfo::NO) deviceInfo.valid = DeviceCreateInfo::NO_INITAL;
-    recreateSwapchain(deviceInfo);
+    if(deviceInfo.valid == RenderState::DeviceCreateInfo::NO) deviceInfo.valid = RenderState::DeviceCreateInfo::NO_INITAL;
+    RenderState::recreateSwapchain(deviceInfo);
+
+    // Create a renderpass for the window with a single color attachment which will be drawn to the surface
+    RenderState::createGraphicsRenderPass({vk::ImageLayout::colorAttachmentOptimal});
 
     // Give the window a reference to this class, so that callbacks can use it.
     glfwSetWindowUserPointer(window, this);
@@ -116,106 +119,15 @@ void Window::setName(str& _name){
     glfwSetWindowTitle(window, name.c_str());
 }
 
-// Returns a reference to the window surface
-vpp::Surface& Window::getSurface() {
-    return surface;
-}
-
-// Returns a reference to the swapchain
-//  This is how the rest of the engine will acess the vulkan elements of the window
-vpp::Swapchain& Window::getSwapchain(){
-    return swapchain;
-}
-
-// Utility function used by recreate swapchain to pick the properties of the swapchain
-//  NOTE: Referenced from https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain
-vk::SwapchainCreateInfoKHR Window::swapchainProperties(const vk::PhysicalDevice pd, const vk::SurfaceKHR surface, vk::SwapchainKHR oldSwapchain){
-    vk::SurfaceCapabilitiesKHR capabilities = vk::getPhysicalDeviceSurfaceCapabilitiesKHR(pd, surface);
-    std::vector<vk::SurfaceFormatKHR> formats = vk::getPhysicalDeviceSurfaceFormatsKHR(pd, surface);
-    std::vector<vk::PresentModeKHR> modes = vk::getPhysicalDeviceSurfacePresentModesKHR(pd, surface);
-
-    // Default fallbacks for format and present mode
-    vk::SurfaceFormatKHR chosenFormat = formats[0];
-    vk::PresentModeKHR chosenMode = vk::PresentModeKHR::fifo;
-    vk::Extent2D chosenExtent = capabilities.currentExtent;
-    // +1 to avoid buffering
-    uint32_t imageCount = capabilities.minImageCount + 1;
-
-    // Choose the format we want if available
-    for(vk::SurfaceFormatKHR& format: formats)
-        if(format.format == vk::Format::a8b8g8r8SrgbPack32 && format.colorSpace == vk::ColorSpaceKHR::srgbNonlinear){
-            chosenFormat = format;
-            break;
-        }
-
-    // Choose the present mode we want if available
-    for(vk::PresentModeKHR& mode: modes)
-        // Mailbox will overwite images in the presentation queue if we render too fast
-        if(mode == vk::PresentModeKHR::mailbox){
-            chosenMode = mode;
-            break;
-        }
-
-    // Clamp the width and height with in acceptable bounds if our window manager allows us to tweak the bounds.
-    if(chosenExtent.width == UINT32_MAX){
-        chosenExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, chosenExtent.width));
-        chosenExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, chosenExtent.height));
-    }
-
-    // Clamp the image count (if it has a maximum)
-    if(capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount)
-        imageCount = capabilities.maxImageCount;
-
-    return {/* flags */ {},
-        surface,
-        imageCount,
-        chosenFormat.format,
-        chosenFormat.colorSpace,
-        chosenExtent,
-        /* imageArrayLayers*/ 1,
-        vk::ImageUsageBits::colorAttachment,
-        vk::SharingMode::exclusive,
-        /*queueFamilyIndexCount*/ 0,
-        /*QueueFamilyIndices*/ nullptr,
-        /* Pretransform */ capabilities.currentTransform,
-        vk::CompositeAlphaBitsKHR::opaque,
-        chosenMode,
-        VK_TRUE,
-        oldSwapchain};
-}
-
 // Recreates the swapchain
-//  If a valid deviceInfo is passed in, the swapchain will be recreated with the new physical device
-//  If a special version of deviceInfo passed in from the constructor is found, it will let vpp pick a physical device
-//  If neither of these is the case, it will resize the swapchain to be the same size as the GLFW framebuffer
-void Window::recreateSwapchain(Window::DeviceCreateInfo deviceInfo){
+void Window::recreateSwapchain(){
     if(!window) throw WindowNotFound(name);
 
-    // We are given a new valid physical device from which we need to create a new Device
-    if(deviceInfo.valid == DeviceCreateInfo::YES){
-        dlg_info("Creating new device for window '" + name + "' from physical device.");
-        device = std::make_unique<vpp::Device>(surface.vkInstance(), deviceInfo.device, deviceInfo.info);
-        swapchain = vpp::Swapchain(*device, swapchainProperties(device->vkPhysicalDevice(), surface.vkHandle()));
+    vk::Extent2D newSize;
+    auto [width, height] = getFrameSize();
+    newSize.width = width; newSize.height = height;
 
-    // We haven't been given a device, just pick the "best" one
-    } else if(deviceInfo.valid == DeviceCreateInfo::NO_INITAL){
-        dlg_info("Creating new device for window '" + name + "'. Automatically determining best device.");
-        const vpp::Queue* present;
-        device = std::make_unique<vpp::Device>(surface.vkInstance(), surface, present);
-        swapchain = vpp::Swapchain(*device, swapchainProperties(device->vkPhysicalDevice(), surface.vkHandle()));
-
-    // We just need to resize the swapchain
-    } else {
-        vk::Extent2D newSize;
-        auto [width, height] = getFrameSize();
-        newSize.width = width; newSize.height = height;
-
-        // TODO: Is this log message excessive?
-        dlg_info("Resizing window '" + name + "'s swapchain to (" + str(width) + ", " + str(height) + ").");
-
-        vk::SwapchainCreateInfoKHR properties = swapchainProperties(swapchain.device().vkPhysicalDevice(), surface.vkHandle(), swapchain.vkHandle());
-        swapchain.resize(newSize, properties);
-    }
+    RenderState::recreateSwapchain({}, newSize);
 }
 
 // Swap the queued framebuffer with the currently visible framebuffer.

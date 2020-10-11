@@ -89,20 +89,8 @@ public:
     // Creates a string from an input stream
     //  Allows partitioning of a subset of the input stream.
     //  By default the entire input stream will be stored in the string.
-    static str file(std::istream& s, size_t start = 0, long len = -1){
-        // Calculate length (if nessicary)
-        if(len < 0){
-            s.seekg(0L, std::ios::end);
-            len = size_t(s.tellg()) - start;
-        }
-        // Move to the specified starting position in the stream
-        s.seekg(start, std::ios::beg);
-        s.clear();
-
-        // Make this string large enouph to hold the length and load it
-        str out(len, '\0');
-        s.readsome(out.data(), len);
-        return out;
+    static str stream(std::istream& s, size_t start = 0, long len = -1){
+        return (char*) readStream(s, start, len).data();
     }
 
     // Creates a string by getting the next line of the input file

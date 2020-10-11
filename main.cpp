@@ -29,13 +29,13 @@ int main(){
     Window w(instance, 800, 600, str(27));
     Window w2(instance, 800, 600);
 
-    // TODO: GLSL shader compilation (also support for precompiled SPR-V binaries)
-    // TODO: ShaderProgram wraper for packing all the shader programs together
-
     // TODO: Image View API on Window (merged with framebuffer? renderpass?) RenderData? RenderState?
 
     std::ifstream source("test.vert.glsl");
-    GLSLShaderModule module(w.getSwapchain().device(), source, vk::ShaderStageBits::vertex);
+    GLSLShaderModule module(w.device(), source, vk::ShaderStageBits::vertex);
+
+    w.createGraphicsRenderPass({vk::ImageLayout::colorAttachmentOptimal});
+    w.recreateRenderBuffers();
 
     str s = u8"This is a string which I am writing. μ";
     w.setName(s);

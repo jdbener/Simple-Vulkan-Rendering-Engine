@@ -5,13 +5,29 @@
 #include <SPIRV/GlslangToSpv.h>
 #include "engine/vendor/glslang/DirStackFileIncluder.h"
 
+vk::ShaderModule vpp::loadShaderModule(vk::Device dev, std::ifstream& sourceFile){
+    std::vector<std::byte> data = readStream(sourceFile);
+    // If the number of bytes of data isn't divisible by 4
+    if(data.size() % 4) throw std::runtime_error("Invalid SPIR-V binary");
+
+    uint32_t* ptr = (uint32_t*) data.data();
+    return loadShaderModule(dev, {ptr, ptr + (data.size() / 4)});
+}
+
+SPIRVShaderModule::SPIRVShaderModule(const vpp::Device& dev, std::ifstream& sourceFile)
+    : vpp::ShaderModule(dev, vpp::loadShaderModule(dev, sourceFile)) {}
+
+/*---------------------
+* GLSLShaderModule
+---------------------*/
+
 GLSLShaderModule::GLSLShaderModule(const vpp::Device& dev, str sourceCode, vk::ShaderStageBits stage, str entryPoint){
     compileShaderModule(dev, sourceCode, stage, entryPoint);
 }
 
 // Constructs a shader module from the code stored at the provided filestream
 GLSLShaderModule::GLSLShaderModule(const vpp::Device& dev, std::ifstream& sourceFile, vk::ShaderStageBits stage, str entryPoint){
-    str sourceCode = str::file(sourceFile);
+    str sourceCode = str::stream(sourceFile);
     compileShaderModule(dev, sourceCode, stage, entryPoint);
 }
 

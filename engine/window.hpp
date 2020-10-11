@@ -2,6 +2,7 @@
 
 #include "util/string.hpp"
 #include "vulkan/common.hpp"
+#include "vulkan/renderState.hpp"
 
 class GLFWwindow;
 
@@ -17,27 +18,12 @@ protected:
     WindowNotFound(std::runtime_error&& o) : std::runtime_error(o) {}
 };
 
-class Window {
-public:
-    // Struct used to con
-    struct DeviceCreateInfo {
-        enum Valid {NO, YES, NO_INITAL};
-
-        Valid valid = NO;
-        vk::DeviceCreateInfo info;
-        vk::PhysicalDevice device;
-
-        DeviceCreateInfo() : valid(NO) {}
-        DeviceCreateInfo(vk::DeviceCreateInfo _info, vk::PhysicalDevice _device) : valid(YES), info(_info), device(_device) {}
-    };
-
+class Window: public RenderState {
 private:
     // Tracks if GLFW has been initalized
     static bool glfwInitalized;
     // Track the number of created windows
     static size_t windowCount;
-    // Used to store the memory of the vulkan logical device we create for this window
-    std::unique_ptr<vpp::Device> device = nullptr;
     str name;
 
     friend void _WindowCloseCallback(GLFWwindow*);
@@ -46,13 +32,11 @@ private:
     vk::SwapchainCreateInfoKHR swapchainProperties(const vk::PhysicalDevice pd, const vk::SurfaceKHR surface, vk::SwapchainKHR oldSwapchain = {});
 protected:
     GLFWwindow* window = nullptr;
-    vpp::Surface surface;
-    vpp::Swapchain swapchain;
 
     bool destroy();
 
 public:
-    Window(vpp::Instance&, int width = 800, int height = 600, str name = "Project Delta", DeviceCreateInfo deviceInfo = {}, std::vector<std::pair<int, int>> windowCreationHints = {});
+    Window(vpp::Instance&, int width = 800, int height = 600, str name = "Project Delta", RenderState::DeviceCreateInfo deviceInfo = {}, std::vector<std::pair<int, int>> windowCreationHints = {});
     ~Window();
 
     // TODO: Make fullscreen
@@ -66,10 +50,7 @@ public:
     void setName(str&);
     std::string_view getName() const;
 
-    vpp::Surface& getSurface(); // Needed?
-    vpp::Swapchain& getSwapchain();
-    void recreateSwapchain(DeviceCreateInfo deviceInfo = {});
-
+    void recreateSwapchain();
     void swapBuffers();
 
     bool isDestroyed() const;
