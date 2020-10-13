@@ -5,7 +5,8 @@
 #include <SPIRV/GlslangToSpv.h>
 #include "engine/vendor/glslang/DirStackFileIncluder.h"
 
-vk::ShaderModule vpp::loadShaderModule(vk::Device dev, std::ifstream& sourceFile){
+/// Loads the specified SPIR-V file and converts it into a shader module
+vk::ShaderModule vpp::loadShaderModule(vk::Device dev, std::istream& sourceFile){
     std::vector<std::byte> data = readStream(sourceFile);
     // If the number of bytes of data isn't divisible by 4
     if(data.size() % 4) throw std::runtime_error("Invalid SPIR-V binary");
@@ -14,27 +15,97 @@ vk::ShaderModule vpp::loadShaderModule(vk::Device dev, std::ifstream& sourceFile
     return loadShaderModule(dev, {ptr, ptr + (data.size() / 4)});
 }
 
-SPIRVShaderModule::SPIRVShaderModule(const vpp::Device& dev, std::ifstream& sourceFile)
-    : vpp::ShaderModule(dev, vpp::loadShaderModule(dev, sourceFile)) {}
+/// Creates a shader module from the specified SPIR-V binary array
+///     Saves the resuling binary array if the debugging mode is turned on
+SPIRVShaderModule::SPIRVShaderModule(const vpp::Device& dev, nytl::Span<const uint32_t> _bytes)
+  : vpp::ShaderModule(dev, _bytes){
+#if (DEBUG_SHADER_CODE == 1)
+      bytes = {_bytes.begin(), _bytes.end()};
+#endif // #if (DEBUG_SHADER_CODE == 1)
+}
+
+// Helper function which converts uint8 byte data from a filestream into
+//  uint32 byte data (SPIR-V)
+std::vector<uint32_t> loadShaderBytes(std::istream& sourceFile){
+    std::vector<std::byte> data = readStream(sourceFile);
+    // If the number of bytes of data isn't divisible by 4
+    if(data.size() % 4) throw std::runtime_error("Invalid SPIR-V binary");
+
+    uint32_t* ptr = (uint32_t*) data.data();
+    return {ptr, ptr + data.size() / 4};
+}
+
+/// Creates a shader module from the specified SPIR-V binary filestream
+///     Saves the resuling binary array if the debugging mode is turned on
+SPIRVShaderModule::SPIRVShaderModule(const vpp::Device& dev, std::istream& sourceFile)
+  : vpp::ShaderModule(dev, vpp::loadShaderModule(dev, sourceFile)) {
+#if (DEBUG_SHADER_CODE == 1)
+        // Jump to beginning and clear EOF flag
+        sourceFile.seekg(0L, std::ios::beg);
+        sourceFile.clear();
+        // Load in the byte code;
+        bytes = loadShaderBytes(sourceFile);
+#endif // #if (DEBUG_SHADER_CODE == 1)
+    }
+
+/// Saves the shader module's SPIR-V as a binary file
+#if (DEBUG_SHADER_CODE == 1)
+void SPIRVShaderModule::saveBinary(std::ostream& file){
+    file.write((char*) bytes.data(), bytes.size() * sizeof(bytes[0]));
+}
+void SPIRVShaderModule::saveBinary(str fileName){
+    std::ofstream file(fileName, std::ios::binary);
+    saveBinary(file);
+    file.close();
+}
+
+/// Saves the shader module's SPIR-V as c++ header file with the binary baked into an array.
+///     This header can be used to compile the shader code into the executable
+void SPIRVShaderModule::saveHeader(std::ostream& file, str variableName){
+    file << "#pragma once" << std::endl
+        << "#include <cstdint>" << std::endl
+        << std::endl
+        << "const uint32_t " << variableName.toupper().replace({" ", "\t",}, "_") << "_SIZE = " << (bytes.size() * sizeof(bytes[0])) << ";" << std::endl
+        << "const uint32_t " << variableName.toupper().replace({" ", "\t",}, "_") << "[] = {" << std::endl << "\t";
+
+    for(size_t i = 0; i < bytes.size(); i++){
+        file << "0x" << std::setfill('0') << std::setw(8) << str::base(bytes[i], 16).toupper();
+        if (!(i == bytes.size() - 1)) file << ", ";
+
+        if(i % 5 == 4) file << std::endl << "\t";
+    }
+
+    file << std::endl << "};" << std::endl;
+}
+void SPIRVShaderModule::saveHeader(str fileName){
+    std::ofstream file(fileName);
+    saveHeader(file, fileName.split(".")[0]);
+    file.close();
+}
+#endif // #if (DEBUG_SHADER_CODE == 1)
 
 /*---------------------
 * GLSLShaderModule
 ---------------------*/
 
+// Compiles the specified GLSL into a SPIR-V based shader module
+///     Saves the resuling binary array if the debugging mode is turned on
 GLSLShaderModule::GLSLShaderModule(const vpp::Device& dev, str sourceCode, vk::ShaderStageBits stage, str entryPoint){
     compileShaderModule(dev, sourceCode, stage, entryPoint);
 }
 
-// Constructs a shader module from the code stored at the provided filestream
-GLSLShaderModule::GLSLShaderModule(const vpp::Device& dev, std::ifstream& sourceFile, vk::ShaderStageBits stage, str entryPoint){
+// Constructs a shader module from the GLSL code stored in the provided filestream
+///     Saves the resuling binary array if the debugging mode is turned on
+GLSLShaderModule::GLSLShaderModule(const vpp::Device& dev, std::istream& sourceFile, vk::ShaderStageBits stage, str entryPoint){
     str sourceCode = str::stream(sourceFile);
     compileShaderModule(dev, sourceCode, stage, entryPoint);
 }
 
 // Compiles the provided GLSL source code into a SPIR-V based vulkan shader module
+//  NOTE: Saves the resuling binary array if the debugging mode is turned on
 //  NOTE: Slightly modified from: https://forestsharp.com/glslang-cpp/
 void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str sourceCode, vk::ShaderStageBits _stage, str entryPoint){
-    dlg_warn("Be sure to compile this shader to SPIRV before release!\n(This function should not be used in release builds!)");
+    dlg_warn("Be sure to compile this shader to a SPIR-V binary before release!\n(This function should not be used in release builds!)");
 
     // TODO: Look at what all is in this monolithic beast
     TBuiltInResource DefaultTBuiltInResource = {
@@ -197,7 +268,13 @@ void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str source
     }
 
     // Convert the program to SPIR-V
+#if (DEBUG_SHADER_CODE == 1)
+    // Save the SPIRV for later if debug export is enabled
+    std::vector<uint32_t>& spirV = bytes;
+#else // #if (DEBUG_SHADER_CODE == 1)
+    // Only temporarily store the data if debug export is disabled
     std::vector<uint32_t> spirV;
+#endif // #if (DEBUG_SHADER_CODE == 1)
     glslang::GlslangToSpv(*program.getIntermediate(stage), spirV);
 
     // Create shader module

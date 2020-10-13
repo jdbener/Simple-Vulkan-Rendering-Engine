@@ -31,8 +31,19 @@ int main(){
 
     // TODO: Image View API on Window (merged with framebuffer? renderpass?) RenderData? RenderState?
 
+    // std::cout << "The split string: " << str("this is a set of fun words!").split(" !") << std::endl;
+    // std::cout << str("       needs to be cut          ").lstrip() << "-" << str("       needs to be cut          ").rstrip() << "!" << std::endl;
+    // std::cout << str("       needs to be cut          ").strip(" t") << std::endl;
+    // std::cout << "Stress test: " << str("thisstringhasnosplitsinit").split(" t") << std::endl;
+    // std::cout << str("this sure is a great string").replace("ing", "bob").replace("a", "b") << std::endl;
+
     std::ifstream source("test.vert.glsl");
     GLSLShaderModule module(w.device(), source, vk::ShaderStageBits::vertex);
+
+    // TODO: Confirm that the generated headers/binary files store valid SPIR-V
+    module.saveBinary(std::cout);
+    std::cout << std::endl << std::endl;
+    module.saveHeader(std::cout, "vertex");
 
     w.createGraphicsRenderPass({vk::ImageLayout::colorAttachmentOptimal});
     w.recreateRenderBuffers();

@@ -151,7 +151,7 @@ void RenderState::createGraphicsRenderPass(std::vector<vk::ImageLayout> _colorAt
         device(), {/*flags*/ {},
         /* attachment*/ 1, &attachment,
         /* subpass*/ 1, &subpass,
-        /* dependanct */ 0, nullptr}
+        /* dependancy */ 0, nullptr}
     };
 }
 
