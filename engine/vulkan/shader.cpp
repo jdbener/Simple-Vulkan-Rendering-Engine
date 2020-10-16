@@ -50,10 +50,10 @@ SPIRVShaderModule::SPIRVShaderModule(const vpp::Device& dev, std::istream& sourc
 
 /// Saves the shader module's SPIR-V as a binary file
 #if (DEBUG_SHADER_CODE == 1)
-void SPIRVShaderModule::saveBinary(std::ostream& file){
+void SPIRVShaderModule::saveBinary(std::ostream& file) const {
     file.write((char*) bytes.data(), bytes.size() * sizeof(bytes[0]));
 }
-void SPIRVShaderModule::saveBinary(str fileName){
+void SPIRVShaderModule::saveBinary(str fileName) const {
     std::ofstream file(fileName, std::ios::binary);
     saveBinary(file);
     file.close();
@@ -61,7 +61,7 @@ void SPIRVShaderModule::saveBinary(str fileName){
 
 /// Saves the shader module's SPIR-V as c++ header file with the binary baked into an array.
 ///     This header can be used to compile the shader code into the executable
-void SPIRVShaderModule::saveHeader(std::ostream& file, str variableName){
+void SPIRVShaderModule::saveHeader(std::ostream& file, str variableName) const {
     file << "#pragma once" << std::endl
         << "#include <cstdint>" << std::endl
         << std::endl
@@ -77,7 +77,7 @@ void SPIRVShaderModule::saveHeader(std::ostream& file, str variableName){
 
     file << std::endl << "};" << std::endl;
 }
-void SPIRVShaderModule::saveHeader(str fileName){
+void SPIRVShaderModule::saveHeader(str fileName) const {
     std::ofstream file(fileName);
     saveHeader(file, fileName.split(".")[0]);
     file.close();
@@ -102,7 +102,7 @@ GLSLShaderModule::GLSLShaderModule(const vpp::Device& dev, std::istream& sourceF
 }
 
 // Compiles the provided GLSL source code into a SPIR-V based vulkan shader module
-//  NOTE: Saves the resuling binary array if the debugging mode is turned on
+//  Saves the resuling binary array if the debugging mode is turned on
 //  NOTE: Slightly modified from: https://forestsharp.com/glslang-cpp/
 void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str sourceCode, vk::ShaderStageBits _stage, str entryPoint){
     dlg_warn("Be sure to compile this shader to a SPIR-V binary before release!\n(This function should not be used in release builds!)");
@@ -235,11 +235,10 @@ void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str source
     shader.setEntryPoint(entryPoint);
 
     // Preprocess the shader
-    DirStackFileIncluder includer; // #Include processer
+    DirStackFileIncluder includer; // #Include preprocesser
     str preproccesedCode;
     EShMessages messages = (EShMessages) (EShMsgSpvRules | EShMsgVulkanRules);
     if(!shader.preprocess(&DefaultTBuiltInResource, /*default version*/ 100, EProfile::ENoProfile, false, false, messages, &preproccesedCode, includer)){
-        // TODO: check if we get error messages with an actual shader
         if(sourceCode.size() > 100) { dlg_error("Preprocessing failed for:\n" + sourceCode.substr(0, 100) + "..."); }
         else { dlg_error("Preprocessing failed for:\n" + sourceCode); }
         std::cerr << shader.getInfoLog() << std::endl;
@@ -250,7 +249,6 @@ void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str source
 
     // Parse the shader
     if(!shader.parse(&DefaultTBuiltInResource, 100, false, messages)){
-        // TODO: check if we get error messages with an actual shader
         if(sourceCode.size() > 100) { dlg_error("GLSL Parsing failed for:\n" + sourceCode.substr(0, 100) + "..."); }
         else { dlg_error("GLSL Parsing failed for:\n" + sourceCode); }
         std::cerr << shader.getInfoLog() << std::endl;

@@ -55,7 +55,7 @@ public:
     /// Gets the number of utf-8 characters
     size_t utf8Size() const { return nytl::charCount(*this); }
 
-    // TODO: there is probably a better way of implementing this
+    // FIXME: there is probably a better way of implementing this
     /// Gets the <i>th utf-8 character
     std::array<char, 5> utf8At(size_t i) const { return nytl::nth(*this, i); }
 
@@ -127,7 +127,7 @@ public:
         std::string out = *this;
         size_t start;
         while((start = out.find(match)) != str::npos)
-            out.replace(start, replacement.size(), replacement);
+            out.replace(start, match.size(), replacement);
 
         return out;
     }

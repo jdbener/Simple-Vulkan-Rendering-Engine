@@ -21,12 +21,16 @@ public:
 	SPIRVShaderModule(const vpp::Device& dev, nytl::Span<const uint32_t> bytes);
     SPIRVShaderModule(const vpp::Device& dev, std::istream& sourceFile);
 
-#if (DEBUG_SHADER_CODE == 1)
-    void saveBinary(std::ostream& file);
-    void saveBinary(str fileName);
+    vpp::ShaderProgram::StageInfo createStageInfo(vk::ShaderStageBits stage, str entryPoint = u8"main") const {
+        return {vkHandle(), stage, nullptr, entryPoint, {}};
+    }
 
-    void saveHeader(std::ostream& file, str variableName);
-    void saveHeader(str fileName);
+#if (DEBUG_SHADER_CODE == 1)
+    void saveBinary(std::ostream& file) const;
+    void saveBinary(str fileName) const;
+
+    void saveHeader(std::ostream& file, str variableName) const;
+    void saveHeader(str fileName) const;
 #endif // DEBUG_SHADER_CODE == 1
 };
 

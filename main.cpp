@@ -24,10 +24,10 @@ int main(){
         /*Layer Names*/ layers.data(),
         /*Extension Count*/ (uint32_t) extensions.size(),
         /*Extension Names*/ extensions.data()});
+    // TEMP: Remove in release builds
     vpp::DebugMessenger debugMsg(instance);
 
     Window w(instance, 800, 600, str(27));
-    Window w2(instance, 800, 600);
 
     // TODO: Image View API on Window (merged with framebuffer? renderpass?) RenderData? RenderState?
 
@@ -37,25 +37,75 @@ int main(){
     // std::cout << "Stress test: " << str("thisstringhasnosplitsinit").split(" t") << std::endl;
     // std::cout << str("this sure is a great string").replace("ing", "bob").replace("a", "b") << std::endl;
 
-    std::ifstream source("test.vert.glsl");
-    GLSLShaderModule module(w.device(), source, vk::ShaderStageBits::vertex);
+    std::ifstream vertexSource("test.vert.glsl");
+    GLSLShaderModule vertex(w.device(), vertexSource, vk::ShaderStageBits::vertex);
 
     // TODO: Confirm that the generated headers/binary files store valid SPIR-V
-    module.saveBinary(std::cout);
-    std::cout << std::endl << std::endl;
-    module.saveHeader(std::cout, "vertex");
+    // {
+    //     std::stringstream header;
+    //     vertex.saveHeader(header, "vertex");
+    //
+    //     auto strings = str(header.str()).replace({"#pragma once\n#include <cstdint>\n\nconst uint32_t VERTEX_SIZE = 1316;\nconst uint32_t VERTEX[] = {\n", "\n};"}, "")
+    //         .strip().split(", \t\n");
+    //     std::vector<uint32_t> headerData;
+    //     for(str& cur: strings)
+    //         headerData.push_back(cur.num(16));
+    //
+    //     std::cout << strings << std::endl;
+    //     std::cout << std::setbase(16) << headerData << std::endl;
+    //     SPIRVShaderModule(w.device(), headerData);
+    // }
 
-    w.createGraphicsRenderPass({vk::ImageLayout::colorAttachmentOptimal});
-    w.recreateRenderBuffers();
+    std::ifstream fragmentSource("test.frag.glsl");
+    GLSLShaderModule fragment(w.device(), fragmentSource, vk::ShaderStageBits::fragment);
+
+    //w.createGraphicsRenderPass({vk::ImageLayout::colorAttachmentOptimal});
+
+    // I think this step needs to be explicit
+    w.bindPipeline({ std::vector<vpp::ShaderProgram::StageInfo>{vertex.createStageInfo(vk::ShaderStageBits::vertex),
+        fragment.createStageInfo(vk::ShaderStageBits::fragment)} });
+    // vpp::PipelineLayout layout(w.device(), {}, {});
+    // vpp::GraphicsPipelineInfo pipelineInfo(w.renderPass, layout.vkHandle(), /* Program */ });
+    // w.pipeline = {w.device(), pipelineInfo.info()};
+
+
 
     str s = u8"This is a string which I am writing. μ";
     w.setName(s);
     w.setSize(400, 400);
 
+
+    //vk::deviceWaitIdle(w.device());
+
+    //w.rerecordCommandBuffers();
+
+    vpp::Semaphore imgAvailable(w.device());
+    vpp::Semaphore imgFinished(w.device());
+
     do {
-        w.swapBuffers();
-        //Window::waitEvents();
+        // TODO: convert to function, Window::render
+        try{
+            // TODO: Improve syncronization
+            uint32_t i = vk::acquireNextImageKHR(w.device().vkHandle(), w.swapchain.vkHandle(), /*timeout*/ UINT64_MAX, imgAvailable.vkHandle(), {});
+
+            vk::PipelineStageFlags waitStage = vk::PipelineStageBits::colorAttachmentOutput;
+            vk::queueSubmit(w.device().presentQueue()->vkHandle(), std::vector<vk::SubmitInfo>{ {1, &imgAvailable.vkHandle(), &waitStage, 1, &w.renderBuffers[i].commandBuffer.vkHandle(), 1, &imgFinished.vkHandle()} });
+            vk::queuePresentKHR(w.device().presentQueue()->vkHandle(), {1, &imgFinished.vkHandle(), 1, &w.swapchain.vkHandle(), &i, nullptr});
+
+            //Window::waitEvents();
+            std::cout << i << std::endl;
+        } catch (vk::VulkanError& e){
+            if (e.error == vk::Result::errorOutOfDateKHR) {
+                dlg_info("Swapchain for window '" + str(w.getName()) + "' out of date, recreating");
+                w.recreateSwapchain();
+                w.rerecordCommandBuffers();
+            }
+        }
+        std::cin.get();
         Window::pollEvents();
     // Wait for main window to be closed
     } while(!w.isClosed());
+
+    std::cout << "waiting for device to idle" << std::endl;
+    w.device().waitIdle();
 }

@@ -20,6 +20,7 @@ void _WindowCloseCallback(GLFWwindow* _window){
 void _WindowResizeCallback(GLFWwindow* _window, int, int){
     Window* window = (Window*) glfwGetWindowUserPointer(_window);
     window->recreateSwapchain();
+    window->rerecordCommandBuffers();
 }
 
 // Creates a new window with an attached vulkan rendering surface
@@ -58,8 +59,20 @@ Window::Window(vpp::Instance& instance, int width, int height, str _name, Device
     if(deviceInfo.valid == RenderState::DeviceCreateInfo::NO) deviceInfo.valid = RenderState::DeviceCreateInfo::NO_INITAL;
     RenderState::recreateSwapchain(deviceInfo);
 
+    // Create a command pool for this window, from the queue with support for both graphics and transfer
+    try {
+        commandPool = vpp::CommandPool(device(), {{}, device().presentQueueExcept()->family()});
+    // Falls back to creating from the queue with graphics support
+    } catch (vk::VulkanError& e){
+        dlg_warn("Falling back to graphics queue for window '" + name + "'");
+        commandPool = vpp::CommandPool(device(), {{}, device().graphicsQueue()->family()});
+    }
+
     // Create a renderpass for the window with a single color attachment which will be drawn to the surface
     RenderState::createGraphicsRenderPass({vk::ImageLayout::colorAttachmentOptimal});
+
+    // Create the objects we need to render each frame
+    RenderState::recreateRenderBuffers();
 
     // Give the window a reference to this class, so that callbacks can use it.
     glfwSetWindowUserPointer(window, this);
@@ -132,11 +145,11 @@ void Window::recreateSwapchain(){
 
 // Swap the queued framebuffer with the currently visible framebuffer.
 //  A.k.a show the next image.
-void Window::swapBuffers(){
-    if(!window) throw WindowNotFound(name);
-
-    glfwSwapBuffers(window);
-}
+// void Window::swapBuffers(){
+//     if(!window) throw WindowNotFound(name);
+//
+//     glfwSwapBuffers(window);
+// }
 
 // Returns true if the window has been closed (by calling close or clicking the
 //  X in the os.)

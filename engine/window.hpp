@@ -51,7 +51,7 @@ public:
     std::string_view getName() const;
 
     void recreateSwapchain();
-    void swapBuffers();
+    //void swapBuffers();           Needed with vulkan?
 
     bool isDestroyed() const;
     bool isClosed() const;
