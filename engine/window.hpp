@@ -27,9 +27,7 @@ private:
     str name;
 
     friend void _WindowCloseCallback(GLFWwindow*);
-    friend void _WindowResizeCallback(GLFWwindow*, int, int);
 
-    vk::SwapchainCreateInfoKHR swapchainProperties(const vk::PhysicalDevice pd, const vk::SurfaceKHR surface, vk::SwapchainKHR oldSwapchain = {});
 protected:
     GLFWwindow* window = nullptr;
 
@@ -39,19 +37,20 @@ public:
     Window(vpp::Instance&, int width = 800, int height = 600, str name = "Project Delta", RenderState::DeviceCreateInfo deviceInfo = {}, std::vector<std::pair<int, int>> windowCreationHints = {});
     ~Window();
 
+    // TODO: Window icon
     // TODO: Make fullscreen
-    // TODO: void makeFullscreen();
-    // TODO: void makeWindowed(int width, int height);
-    // TODO: Focus, minimize, maximize
+    // TODO: Focus, demand attention, minimize, maximize
 
     void setSize(int width, int height);
     std::pair<int, int> getTotalSize() const;
     std::pair<int, int> getFrameSize() const;
     void setName(str&);
+    void setName(str&& s) { setName(s); }
     std::string_view getName() const;
 
     void recreateSwapchain();
-    //void swapBuffers();           Needed with vulkan?
+    // Overide to the main loop function which abandons the loop if the window has already been closed
+    virtual bool mainLoop(uint64_t frame) { if(!window) return false; return RenderState::mainLoop(frame); }
 
     bool isDestroyed() const;
     bool isClosed() const;

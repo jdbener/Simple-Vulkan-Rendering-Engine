@@ -1,13 +1,29 @@
 #include "renderState.hpp"
 #include <map>
 
+// Initalize the id list
+uint16_t VulkanState::nextID = 0;
+
+/// Bind an already existing custom pipeline
+void VulkanState::bindPipeline(vpp::Pipeline&& _pipeline) {
+    pipeline = std::move(_pipeline);
+
+    // Once the pipeline is bound, rerecord the command buffers
+    rerecordCommandBuffers();
+}
+
+/// Gets the width and height of the swapchain.
+///     Requires <surface> already be set
+///     If pd is ommitted uses the one bound to the <swapchain>
 vk::Extent2D RenderState::swapchainExtent(vk::PhysicalDevice pd, bool ignoreCache){
+    // Caching
     static std::map<vk::SurfaceKHR, vk::Extent2D> cache;
     if(!ignoreCache && cache.find(surface) != cache.end()) return cache[surface];
 
     if(!pd) pd = swapchain.vkPhysicalDevice();
     vk::SurfaceCapabilitiesKHR capabilities = vk::getPhysicalDeviceSurfaceCapabilitiesKHR(pd, surface.vkHandle());
 
+    // Default
     vk::Extent2D chosenExtent = capabilities.currentExtent;
 
     // Clamp the width and height with in acceptable bounds if our window manager allows us to tweak the bounds.
@@ -16,17 +32,23 @@ vk::Extent2D RenderState::swapchainExtent(vk::PhysicalDevice pd, bool ignoreCach
         chosenExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, chosenExtent.height));
     }
 
+    // Update cache
     cache[surface] = chosenExtent;
     return chosenExtent;
 }
 
+/// Gets the image format of the swapchain.
+///     Requires <surface> already be set
+///     If pd is ommitted uses the one bound to the <swapchain>
 vk::SurfaceFormatKHR RenderState::swapchainFormat(vk::PhysicalDevice pd, bool ignoreCache){
+    // Caching
     static std::map<vk::SurfaceKHR, vk::SurfaceFormatKHR> cache;
     if(!ignoreCache && cache.find(surface) != cache.end()) return cache[surface];
 
     if(!pd) pd = swapchain.vkPhysicalDevice();
     std::vector<vk::SurfaceFormatKHR> formats = vk::getPhysicalDeviceSurfaceFormatsKHR(pd, surface.vkHandle());
 
+    // Default
     vk::SurfaceFormatKHR chosenFormat = formats[0];
 
     // Choose the format we want if available
@@ -36,19 +58,23 @@ vk::SurfaceFormatKHR RenderState::swapchainFormat(vk::PhysicalDevice pd, bool ig
             break;
         }
 
+    // Update cache
     cache[surface] = chosenFormat;
     return chosenFormat;
 }
 
+/// Gets the presentation mode of the swapchain.
+///     Requires <surface> already be set.
+///     If pd is ommitted uses the one bound to the <swapchain>
 vk::PresentModeKHR RenderState::swapchainPresentMode(vk::PhysicalDevice pd, bool ignoreCache){
+    // Caching
     static std::map<vk::SurfaceKHR, vk::PresentModeKHR> cache;
     if(!ignoreCache && cache.find(surface) != cache.end()) return cache[surface];
 
     if(!pd) pd = swapchain.vkPhysicalDevice();
     std::vector<vk::PresentModeKHR> modes = vk::getPhysicalDeviceSurfacePresentModesKHR(pd, surface.vkHandle());
 
-    if(!pd) pd = swapchain.vkPhysicalDevice();
-
+    // Default
     vk::PresentModeKHR chosenMode = vk::PresentModeKHR::fifo;
 
     // Choose the present mode we want if available
@@ -59,11 +85,16 @@ vk::PresentModeKHR RenderState::swapchainPresentMode(vk::PhysicalDevice pd, bool
             break;
         }
 
+    // Update cache
     cache[surface] = chosenMode;
     return chosenMode;
 }
 
+/// Gets the number of images which can be rendering at once.
+///     Requires <surface> already be set
+///     If pd is ommitted uses the one bound to the <swapchain>
 uint32_t RenderState::swapchainImageCount(vk::PhysicalDevice pd, bool ignoreCache){
+    // Caching
     static std::map<vk::SurfaceKHR, uint32_t> cache;
     if(!ignoreCache && cache.find(surface) != cache.end()) return cache[surface];
 
@@ -77,23 +108,16 @@ uint32_t RenderState::swapchainImageCount(vk::PhysicalDevice pd, bool ignoreCach
     if(capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount)
         imageCount = capabilities.maxImageCount;
 
+    // Update cache
     cache[surface] = imageCount;
     return imageCount;
-}
-
-/// Bind an already existing custom pipeline
-void RenderState::bindPipeline(vpp::Pipeline&& _pipeline) {
-    pipeline = std::move(_pipeline);
-
-    // Once the pipeline is bound, rerecord the command buffers
-    rerecordCommandBuffers();
 }
 
 /// Bind a default pipeline based on the specified shader program
 void RenderState::bindPipeline(vpp::ShaderProgram&& program, nytl::Span<const vk::DescriptorSetLayout> layouts, nytl::Span<const vk::PushConstantRange> ranges) {
     vpp::PipelineLayout layout(device(), layouts, ranges);
     vpp::GraphicsPipelineInfo pipelineInfo(renderPass, layout.vkHandle(), std::move(program));
-    bindPipeline({device(), pipelineInfo.info()});
+    VulkanState::bindPipeline({device(), pipelineInfo.info()});
 }
 
 // Utility function used by recreate swapchain to pick the properties of the swapchain
@@ -127,20 +151,20 @@ vk::SwapchainCreateInfoKHR RenderState::swapchainProperties(const vk::PhysicalDe
 void RenderState::recreateSwapchain(DeviceCreateInfo deviceInfo, vk::Extent2D newSize){
     // We are given a new valid physical device from which we need to create a new Device
     if(deviceInfo.valid == DeviceCreateInfo::YES){
-        dlg_info("Creating swapchain from specified device");
+        dlg_info("State " + str(id()) + ": Creating swapchain from specified device");
         _device = std::make_unique<VulkDevice>(surface.vkInstance(), deviceInfo.device, deviceInfo.info);
         swapchain = vpp::Swapchain(device(), swapchainProperties(device().vkPhysicalDevice(), surface.vkHandle()));
 
     // We haven't been given a device, just pick the "best" one
     } else if(deviceInfo.valid == DeviceCreateInfo::NO_INITAL){
-        dlg_info("Creating swapchain, picking 'best' device.");
+        dlg_info("State " + str(id()) + ": Creating swapchain, picking 'best' device.");
         const vpp::Queue* present;
         _device = std::make_unique<VulkDevice>(surface.vkInstance(), surface, present);
         swapchain = vpp::Swapchain(device(), swapchainProperties(device().vkPhysicalDevice(), surface.vkHandle()));
 
     // We just need to resize the swapchain
     } else {
-        dlg_info("Resizing swapchain");
+        dlg_info("State " + str(id()) + ": Resizing swapchain");
         vk::SwapchainCreateInfoKHR properties = swapchainProperties(device().vkPhysicalDevice(), surface.vkHandle(), swapchain.vkHandle());
         swapchain.resize(newSize, properties);
 
@@ -149,6 +173,7 @@ void RenderState::recreateSwapchain(DeviceCreateInfo deviceInfo, vk::Extent2D ne
     }
 }
 
+/// Helper to create a simple graphics focused renderpass
 void RenderState::createGraphicsRenderPass(std::vector<vk::ImageLayout> _colorAttachments, std::vector<vk::ImageLayout> _inputAttachments){
     vk::AttachmentDescription attachment {/*flags*/ {}, swapchainFormat().format, vk::SampleCountBits::e1, vk::AttachmentLoadOp::clear, vk::AttachmentStoreOp::store, vk::AttachmentLoadOp::dontCare, vk::AttachmentStoreOp::dontCare,
         // Don't care what the pass looks like when we start, create a final pass suitable for screen presentation
@@ -159,6 +184,7 @@ void RenderState::createGraphicsRenderPass(std::vector<vk::ImageLayout> _colorAt
     for(vk::ImageLayout layout: _colorAttachments) colorAttachments.push_back({i++, layout});
     std::vector<vk::AttachmentReference> inputAttachments;
     for(vk::ImageLayout layout: _inputAttachments) inputAttachments.push_back({i++, layout});
+
     vk::SubpassDescription subpass {/* flags */ {}, vk::PipelineBindPoint::graphics,
         (uint32_t) inputAttachments.size(), inputAttachments.data(),
         (uint32_t) colorAttachments.size(), colorAttachments.data(),
@@ -174,11 +200,11 @@ void RenderState::createGraphicsRenderPass(std::vector<vk::ImageLayout> _colorAt
     };
 }
 
-// Function which records the command buffer
-//  This function will likely need to be overloaded to support more complex elements
+/// Function which sets up all of the data stored in the <renderBuffers>
 void RenderState::recreateRenderBuffers(){
-    // Invalidate the recordings in our command pool
+    // Wait for everthing currently queued to finish rendering
     device().waitIdle();
+    // Invalidate the recordings in our command pool
     vk::resetCommandPool(device().vkDevice(), commandPool.vkHandle());
 
     // Resize the list of buffers to match the list of images
@@ -186,11 +212,11 @@ void RenderState::recreateRenderBuffers(){
     renderBuffers.resize(images.size());
 
     for(size_t i = 0; i < images.size(); i++){
-        RenderBuffer& buffer = renderBuffers[i];
+        // TODO: needed?
         // Save the image
-        buffer.image = images[i];
+        renderBuffers[i].image = images[i];
         // Create an image view
-        buffer.imageView = {device(), {/*flags*/ {}, images[i], vk::ImageViewType::e2d, swapchainFormat().format,
+        renderBuffers[i].imageView = {device(), {/*flags*/ {}, images[i], vk::ImageViewType::e2d, swapchainFormat().format,
             // Mapping each color channel (rgba) to itself
             {vk::ComponentSwizzle::identity, vk::ComponentSwizzle::identity, vk::ComponentSwizzle::identity, vk::ComponentSwizzle::identity},
             // This view will be used for color, with no steroscopic layers or mipmaping
@@ -199,25 +225,35 @@ void RenderState::recreateRenderBuffers(){
 
         // Recreate the framebuffer
         vk::Extent2D extent = swapchainExtent();
-        buffer.framebuffer = { device(), {/*flags*/ {}, renderPass, 1, &buffer.imageView.vkHandle(), extent.width, extent.height, /*layers*/ 1} };
+        renderBuffers[i].framebuffer = { device(), {/*flags*/ {}, renderPass, 1, &renderBuffers[i].imageView.vkHandle(), extent.width, extent.height, /*layers*/ 1} };
 
         // Allocate a command buffer if one doesn't yet exist
-        if(!buffer.commandBuffer) buffer.commandBuffer = {commandPool, vk::CommandBufferLevel::primary};
+        if(!renderBuffers[i].commandBuffer) renderBuffers[i].commandBuffer = {commandPool, vk::CommandBufferLevel::primary};
 
         // Create a new semaphore if one doesn't yet exist
-        if(!buffer.semaphore) buffer.semaphore = {device()};
+        if(!renderBuffers[i].acquired){
+            renderBuffers[i].acquired = {device()};
+            renderBuffers[i].finished = {device()};
+            // Mark the fence as signaled so that we will bypass it on the first run
+            renderBuffers[i].fence = {device(), {vk::FenceCreateBits::signaled}};
+        }
     }
 }
 
-void RenderState::rerecordCommandBuffers(){
+/// Function which recordes to the buffers
+///     Is automatically called after a pipeline is bound
+bool RenderState::rerecordCommandBuffers(){
+    // Calculate the size and viewport
     vk::Extent2D extent = swapchainExtent();
     vk::Viewport viewport{0, 0, (float) extent.width, (float) extent.height, 0, 1};
     vk::Rect2D scissor{{0, 0}, {extent.width, extent.height}};
-    for(RenderState::RenderBuffer& buffer: renderBuffers){
+    // Specify the blank render color
+    vk::ClearValue clearValue = {0, 0, 0, 1}; // full opacity black
+
+    for(RenderBuffer& buffer: renderBuffers){
         vk::beginCommandBuffer(buffer.commandBuffer, {});
         defer(vk::endCommandBuffer(buffer.commandBuffer);, be) // Stop recording at end of loop
 
-        vk::ClearValue clearValue = {0, 0, 0, 1}; // full opacity black
         vk::cmdBeginRenderPass(buffer.commandBuffer,
             {renderPass, buffer.framebuffer, {/*offset*/{0, 0}, extent}, 1, &clearValue}, vk::SubpassContents::eInline);
         defer(vk::cmdEndRenderPass(buffer.commandBuffer);, re) // End the render pass at end of loop
@@ -227,4 +263,40 @@ void RenderState::rerecordCommandBuffers(){
         vk::cmdSetScissor(buffer.commandBuffer, 0, 1, scissor);
         vk::cmdDraw(buffer.commandBuffer, /*vertCount*/ 3, /*instanceCount*/ 1, /*firstVertex*/ 0, /*firstInstance*/ 0);
     }
+
+    // If we made it this far nothing went wrong
+    return true;
+}
+
+/// Function to be called by the main loop every frame
+///     Implementaion needs to handle the case where this object is no longer valid
+///     Automatically resizes the swapchain when it becomes outdated (ex window resized)
+bool RenderState::mainLoop(uint64_t frame){
+    try{
+        // Get the next image in the render queue
+        uint32_t i = vk::acquireNextImageKHR(device().vkHandle(), swapchain.vkHandle(), /*timeout*/ UINT64_MAX, renderBuffers[frame % renderBuffers.size()].acquired.vkHandle(), {});
+
+        // Wait for any previous rendering tasks on this image to finish
+        device().waitForFence(renderBuffers[i].fence.vkHandle());
+
+        // Render the image
+        vk::PipelineStageFlags waitStage = vk::PipelineStageBits::colorAttachmentOutput;
+        vk::queueSubmit(device().presentQueue()->vkHandle(), std::vector<vk::SubmitInfo>{ {1, &renderBuffers[frame % renderBuffers.size()].acquired.vkHandle(), &waitStage, 1, &renderBuffers[i].commandBuffer.vkHandle(), 1, &renderBuffers[i].finished.vkHandle() } }, renderBuffers[i].fence.vkHandle());
+        // Once the image has been rendered put it into the swapchain's buffer
+        vk::queuePresentKHR(device().presentQueue()->vkHandle(), {1, &renderBuffers[i].finished.vkHandle(), 1, &swapchain.vkHandle(), &i, nullptr});
+
+        // Everything went fine
+        return true;
+    } catch (vk::VulkanError& e){
+        // If we have an error saying the swapchain is the wrong size, recreate it
+        if (e.error == vk::Result::errorOutOfDateKHR) {
+            dlg_info("State " + str(id()) + ": Swapchain out of date, recreating");
+            recreateSwapchain();
+            rerecordCommandBuffers();
+        // If we have an error we haven't handled, throw it further up
+        } else
+            throw e;
+    }
+    // If an exception was caught something didn't go right (but this wasn't fatal)
+    return false;
 }

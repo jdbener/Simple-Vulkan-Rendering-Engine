@@ -15,14 +15,6 @@ void _WindowCloseCallback(GLFWwindow* _window){
     window->destroy();
 }
 
-// Callback which occures when the window is resized, resizes the swapchain to
-//  match the new size
-void _WindowResizeCallback(GLFWwindow* _window, int, int){
-    Window* window = (Window*) glfwGetWindowUserPointer(_window);
-    window->recreateSwapchain();
-    window->rerecordCommandBuffers();
-}
-
 // Creates a new window with an attached vulkan rendering surface
 Window::Window(vpp::Instance& instance, int width, int height, str _name, DeviceCreateInfo deviceInfo, std::vector<std::pair<int, int>> windowCreationHints) : name(_name) {
     // Initalize GLFW if nessicary
@@ -79,7 +71,7 @@ Window::Window(vpp::Instance& instance, int width, int height, str _name, Device
     // Register the close callback
     glfwSetWindowCloseCallback(window, &_WindowCloseCallback);
     // Register the resize callback
-    glfwSetWindowSizeCallback(window, &_WindowResizeCallback);
+    //glfwSetWindowSizeCallback(window, &_WindowResizeCallback);
 }
 
 // Destroy the window when it goes out of scope

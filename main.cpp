@@ -7,6 +7,15 @@
 
 #include <fstream>
 
+#include "vertex.h"
+
+class debugShaderModule: public SPIRVShaderModule{
+public:
+    using SPIRVShaderModule::SPIRVShaderModule;
+
+    auto getBytes(){ return bytes; }
+};
+
 std::ostream& operator <<(std::ostream& s, std::pair<int, int> size){
     s << "(" << size.first << ", " << size.second << ")";
     return s;
@@ -15,7 +24,8 @@ std::ostream& operator <<(std::ostream& s, std::pair<int, int> size){
 int main(){
     vk::ApplicationInfo appInfo("Project Delta", GAME_VERSION, "Delta Engine", ENGINE_VERSION, VK_API_VERSION_1_1);
 
-    std::vector<const char*> layers = validateInstanceLayers({"VK_LAYER_KHRONOS_validation"});
+    //std::vector<const char*> layers = validateInstanceLayers({"VK_LAYER_KHRONOS_validation"});
+    std::vector<const char*> layers = validateInstanceLayers({});
     std::vector<const char*> extensions = validateInstanceExtensions(Window::requiredVulkanExtensions()
         + std::vector<const char*>{VK_EXT_DEBUG_UTILS_EXTENSION_NAME});
 
@@ -27,85 +37,39 @@ int main(){
     // TEMP: Remove in release builds
     vpp::DebugMessenger debugMsg(instance);
 
-    Window w(instance, 800, 600, str(27));
+    Window w(instance, 800, 600), w2(instance, 800, 600);
+    w.setName(str(w.getName()) + " (" + str(w.id()) + ")");
+    w2.setName(str(w2.getName()) + " (" + str(w2.id()) + ")");
 
-    // TODO: Image View API on Window (merged with framebuffer? renderpass?) RenderData? RenderState?
-
-    // std::cout << "The split string: " << str("this is a set of fun words!").split(" !") << std::endl;
-    // std::cout << str("       needs to be cut          ").lstrip() << "-" << str("       needs to be cut          ").rstrip() << "!" << std::endl;
-    // std::cout << str("       needs to be cut          ").strip(" t") << std::endl;
-    // std::cout << "Stress test: " << str("thisstringhasnosplitsinit").split(" t") << std::endl;
-    // std::cout << str("this sure is a great string").replace("ing", "bob").replace("a", "b") << std::endl;
 
     std::ifstream vertexSource("test.vert.glsl");
     GLSLShaderModule vertex(w.device(), vertexSource, vk::ShaderStageBits::vertex);
 
-    // TODO: Confirm that the generated headers/binary files store valid SPIR-V
-    // {
-    //     std::stringstream header;
-    //     vertex.saveHeader(header, "vertex");
-    //
-    //     auto strings = str(header.str()).replace({"#pragma once\n#include <cstdint>\n\nconst uint32_t VERTEX_SIZE = 1316;\nconst uint32_t VERTEX[] = {\n", "\n};"}, "")
-    //         .strip().split(", \t\n");
-    //     std::vector<uint32_t> headerData;
-    //     for(str& cur: strings)
-    //         headerData.push_back(cur.num(16));
-    //
-    //     std::cout << strings << std::endl;
-    //     std::cout << std::setbase(16) << headerData << std::endl;
-    //     SPIRVShaderModule(w.device(), headerData);
-    // }
-
     std::ifstream fragmentSource("test.frag.glsl");
     GLSLShaderModule fragment(w.device(), fragmentSource, vk::ShaderStageBits::fragment);
 
-    //w.createGraphicsRenderPass({vk::ImageLayout::colorAttachmentOptimal});
+    SPIRVShaderModule headerVert(w2.device(), {vertex::DATA, vertex::SIZE});
 
     // I think this step needs to be explicit
     w.bindPipeline({ std::vector<vpp::ShaderProgram::StageInfo>{vertex.createStageInfo(vk::ShaderStageBits::vertex),
         fragment.createStageInfo(vk::ShaderStageBits::fragment)} });
-    // vpp::PipelineLayout layout(w.device(), {}, {});
-    // vpp::GraphicsPipelineInfo pipelineInfo(w.renderPass, layout.vkHandle(), /* Program */ });
-    // w.pipeline = {w.device(), pipelineInfo.info()};
+    w2.bindPipeline({ std::vector<vpp::ShaderProgram::StageInfo>{headerVert.createStageInfo(vk::ShaderStageBits::vertex),
+        fragment.createStageInfo(vk::ShaderStageBits::fragment)} });
 
 
-
-    str s = u8"This is a string which I am writing. μ";
-    w.setName(s);
+    //str s = u8"This is a string which I am writing. μ";
+    //w.setName(s);
     w.setSize(400, 400);
 
-
-    //vk::deviceWaitIdle(w.device());
-
-    //w.rerecordCommandBuffers();
-
-    vpp::Semaphore imgAvailable(w.device());
-    vpp::Semaphore imgFinished(w.device());
-
+    uint64_t frame = 0;
     do {
-        // TODO: convert to function, Window::render
-        try{
-            // TODO: Improve syncronization
-            uint32_t i = vk::acquireNextImageKHR(w.device().vkHandle(), w.swapchain.vkHandle(), /*timeout*/ UINT64_MAX, imgAvailable.vkHandle(), {});
-
-            vk::PipelineStageFlags waitStage = vk::PipelineStageBits::colorAttachmentOutput;
-            vk::queueSubmit(w.device().presentQueue()->vkHandle(), std::vector<vk::SubmitInfo>{ {1, &imgAvailable.vkHandle(), &waitStage, 1, &w.renderBuffers[i].commandBuffer.vkHandle(), 1, &imgFinished.vkHandle()} });
-            vk::queuePresentKHR(w.device().presentQueue()->vkHandle(), {1, &imgFinished.vkHandle(), 1, &w.swapchain.vkHandle(), &i, nullptr});
-
-            //Window::waitEvents();
-            std::cout << i << std::endl;
-        } catch (vk::VulkanError& e){
-            if (e.error == vk::Result::errorOutOfDateKHR) {
-                dlg_info("Swapchain for window '" + str(w.getName()) + "' out of date, recreating");
-                w.recreateSwapchain();
-                w.rerecordCommandBuffers();
-            }
-        }
-        std::cin.get();
+        w.mainLoop(frame);
+        w2.mainLoop(frame);
         Window::pollEvents();
+        // Increment frame count
+        frame++;
     // Wait for main window to be closed
     } while(!w.isClosed());
-
-    std::cout << "waiting for device to idle" << std::endl;
+    // Wait for the window's device to idle before terminating the program!
     w.device().waitIdle();
 }

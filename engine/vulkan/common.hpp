@@ -16,6 +16,12 @@ public:
 
     void waitIdle() const { vk::deviceWaitIdle(vkHandle()); }
 
+    void waitForFence(vk::Fence fence, uint64_t timeout = UINT64_MAX) const { waitForFences({&fence, 1}, false, timeout); }
+    void waitForFences(nytl::span<vk::Fence> fences, bool waitAll = true, uint64_t timeout = UINT64_MAX) const {
+        vk::waitForFences(vkHandle(), fences, (waitAll ? VK_TRUE : VK_FALSE), timeout);
+        vk::resetFences(vkHandle(), fences); // Reset the fence so that we don't just automatically bypass it
+    }
+
 // Macro which defines how exception checking works
 #define exceptFunction(func) auto out = func();\
     if(!out) throw vk::VulkanError(vk::Result::errorInitializationFailed, "Failed to find the specified " #func " queue!");\

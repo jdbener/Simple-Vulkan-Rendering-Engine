@@ -62,20 +62,31 @@ void SPIRVShaderModule::saveBinary(str fileName) const {
 /// Saves the shader module's SPIR-V as c++ header file with the binary baked into an array.
 ///     This header can be used to compile the shader code into the executable
 void SPIRVShaderModule::saveHeader(std::ostream& file, str variableName) const {
+    // Header
     file << "#pragma once" << std::endl
         << "#include <cstdint>" << std::endl
         << std::endl
-        << "const uint32_t " << variableName.toupper().replace({" ", "\t",}, "_") << "_SIZE = " << (bytes.size() * sizeof(bytes[0])) << ";" << std::endl
-        << "const uint32_t " << variableName.toupper().replace({" ", "\t",}, "_") << "[] = {" << std::endl << "\t";
+    // Namespace
+        << "namespace " << variableName.replace({" ", "\t",}, "_") << " {" << std::endl
+    // Size declaration
+        << "\tconst uint32_t SIZE = " << bytes.size() << ";" << std::endl
+    // Data declaration
+        << "\tconst uint32_t DATA[] = {" << std::endl << "\t\t";
 
     for(size_t i = 0; i < bytes.size(); i++){
+        // Write the data (it will always be 8 digits long and padded with 0s so as not to change the value)
         file << "0x" << std::setfill('0') << std::setw(8) << str::base(bytes[i], 16).toupper();
+        // Print a comma after every entry (except the last one)
         if (!(i == bytes.size() - 1)) file << ", ";
 
-        if(i % 5 == 4) file << std::endl << "\t";
+        // Start a new line every 5 entries
+        if(i % 5 == 4) file << std::endl << "\t\t";
     }
 
-    file << std::endl << "};" << std::endl;
+    // End data declaration
+    file << std::endl << "\t};"
+    // End namespace
+        << std::endl << "};" << std::endl;
 }
 void SPIRVShaderModule::saveHeader(str fileName) const {
     std::ofstream file(fileName);
