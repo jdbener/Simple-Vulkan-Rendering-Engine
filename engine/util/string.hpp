@@ -26,17 +26,17 @@ public:
     }
     template <typename T> str operator= (T&& other){ return *this = other; }
 
-    // UTF converters (nessicary?)
+    // UTF converters (TODO: necessary?)
     str(std::u16string_view& o){ *this = nytl::toUtf8(o); }
     str(std::u32string_view& o){ *this = nytl::toUtf8(o); }
     str(std::u16string_view&& o){ *this = nytl::toUtf8(o); }
     str(std::u32string_view&& o){ *this = nytl::toUtf8(o); }
 
-    /// Overide to ensure that we don't use the expensive stringstream process when
+    /// Override to ensure that we don't use the expensive stringstream process when
     ///  we are simply assigning a normal string type.
     using std::string::operator=;
 
-    /// Replaces whatever is in this string with next line of the input stream.
+    /// Replaces whatever is in this string with the next line of the input stream.
     ///  Returns true if the operation was successful
     bool setToLine(std::istream& s){
         bool state = s.good();
@@ -140,7 +140,7 @@ public:
         return out;
     }
 
-    /// Returns an all upercase copy of the string
+    /// Returns an all uppercase copy of the string
     str toupper() const {
         str out = *this;
         for(char& c: out) c = std::toupper(c);

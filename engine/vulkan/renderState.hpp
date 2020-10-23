@@ -37,7 +37,7 @@ public:
     vpp::CommandPool commandPool;
 
 public:
-    // Track id initalization in the constructer
+    // Track id initialization in the constructor
     VulkanState() : _id(nextID) { nextID++; }
     virtual ~VulkanState() {}
 
@@ -49,11 +49,11 @@ public:
     /// Bind an already existing custom pipeline
     void bindPipeline(vpp::Pipeline&&);
 
-    /// Function which recordes to the buffers
+    /// Function which records to the buffers.
     ///     Is automatically called after a pipeline is bound
     virtual bool rerecordCommandBuffers() = 0;
-    /// Function to be called by the main loop every frame
-    ///     Implementaion needs to handle the case where this object is no longer valid
+    /// Function to be called by the main loop every frame.
+    ///     Implementation needs to handle the case where this object is no longer valid
     virtual bool mainLoop(uint64_t frame) = 0;
 };
 
@@ -74,7 +74,7 @@ public:
     std::vector<RenderBuffer> renderBuffers;
 
 protected:
-    /// Creates a swapchain create info from the specified surface
+    /// Creates a swapchain create info from the specified surface.
     ///     Requires <surface> already be set
     vk::SwapchainCreateInfoKHR swapchainProperties(const vk::PhysicalDevice pd, const vk::SurfaceKHR surface, vk::SwapchainKHR oldSwapchain = {});
 
@@ -83,19 +83,19 @@ public:
 
     /// Gets the width and height of the swapchain.
     ///     Requires <surface> already be set.
-    ///     If pd is ommitted uses the one bound to the <swapchain>
+    ///     If pd is omitted uses the one bound to the <swapchain>
     vk::Extent2D swapchainExtent(vk::PhysicalDevice pd = {}, bool ignoreCache = false);
     /// Gets the image format of the swapchain.
     ///     Requires <surface> already be set.
-    ///     If pd is ommitted uses the one bound to the <swapchain>
+    ///     If pd is omitted uses the one bound to the <swapchain>
     vk::SurfaceFormatKHR swapchainFormat(vk::PhysicalDevice pd = {}, bool ignoreCache = false);
     /// Gets the presentation mode of the swapchain.
     ///     Requires <surface> already be set.
-    ///     If pd is ommitted uses the one bound to the <swapchain>
+    ///     If pd is omitted uses the one bound to the <swapchain>
     vk::PresentModeKHR swapchainPresentMode(vk::PhysicalDevice pd = {}, bool ignoreCache = false);
-    /// Gets the number of images which can be rendering at once.
+    /// Gets the number of images which can be rendered at once.
     ///     Requires <surface> already be set.
-    ///     If pd is ommitted uses the one bound to the <swapchain>
+    ///     If pd is omitted uses the one bound to the <swapchain>
     uint32_t swapchainImageCount(vk::PhysicalDevice pd = {}, bool ignoreCache = false);
 
     /// Bind a default pipeline based on the specified shader program
@@ -113,11 +113,11 @@ public:
     /// Function which sets up all of the data stored in the <renderBuffers>
     void recreateRenderBuffers();
 
-    /// Function which recordes to the buffers
+    /// Function which records to the command buffers
     ///     Is automatically called after a pipeline is bound
     virtual bool rerecordCommandBuffers();
     /// Function to be called by the main loop every frame
-    ///     Implementaion needs to handle the case where this object is no longer valid
+    ///     Implementation needs to handle the case where this object is no longer valid
     ///     Automatically resizes the swapchain when it becomes outdated (ex window resized)
     virtual bool mainLoop(uint64_t frame);
 };

@@ -16,7 +16,7 @@ vk::ShaderModule vpp::loadShaderModule(vk::Device dev, std::istream& sourceFile)
 }
 
 /// Creates a shader module from the specified SPIR-V binary array
-///     Saves the resuling binary array if the debugging mode is turned on
+///     Saves the resulting binary array if the debugging mode is turned on
 SPIRVShaderModule::SPIRVShaderModule(const vpp::Device& dev, nytl::Span<const uint32_t> _bytes)
   : vpp::ShaderModule(dev, _bytes){
 #if (DEBUG_SHADER_CODE == 1)
@@ -36,7 +36,7 @@ std::vector<uint32_t> loadShaderBytes(std::istream& sourceFile){
 }
 
 /// Creates a shader module from the specified SPIR-V binary filestream
-///     Saves the resuling binary array if the debugging mode is turned on
+///     Saves the resulting binary array if the debugging mode is turned on
 SPIRVShaderModule::SPIRVShaderModule(const vpp::Device& dev, std::istream& sourceFile)
   : vpp::ShaderModule(dev, vpp::loadShaderModule(dev, sourceFile)) {
 #if (DEBUG_SHADER_CODE == 1)
@@ -59,7 +59,7 @@ void SPIRVShaderModule::saveBinary(str fileName) const {
     file.close();
 }
 
-/// Saves the shader module's SPIR-V as c++ header file with the binary baked into an array.
+/// Saves the shader module's SPIR-V as a c++ header file with the binary baked into an array.
 ///     This header can be used to compile the shader code into the executable
 void SPIRVShaderModule::saveHeader(std::ostream& file, str variableName) const {
     // Header
@@ -100,20 +100,20 @@ void SPIRVShaderModule::saveHeader(str fileName) const {
 ---------------------*/
 
 // Compiles the specified GLSL into a SPIR-V based shader module
-///     Saves the resuling binary array if the debugging mode is turned on
+///     Saves the resulting binary array if the debugging mode is turned on
 GLSLShaderModule::GLSLShaderModule(const vpp::Device& dev, str sourceCode, vk::ShaderStageBits stage, str entryPoint){
     compileShaderModule(dev, sourceCode, stage, entryPoint);
 }
 
 // Constructs a shader module from the GLSL code stored in the provided filestream
-///     Saves the resuling binary array if the debugging mode is turned on
+///     Saves the resulting binary array if the debugging mode is turned on
 GLSLShaderModule::GLSLShaderModule(const vpp::Device& dev, std::istream& sourceFile, vk::ShaderStageBits stage, str entryPoint){
     str sourceCode = str::stream(sourceFile);
     compileShaderModule(dev, sourceCode, stage, entryPoint);
 }
 
 // Compiles the provided GLSL source code into a SPIR-V based vulkan shader module
-//  Saves the resuling binary array if the debugging mode is turned on
+//  Saves the resulting binary array if the debugging mode is turned on
 //  NOTE: Slightly modified from: https://forestsharp.com/glslang-cpp/
 void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str sourceCode, vk::ShaderStageBits _stage, str entryPoint){
     dlg_warn("Be sure to compile this shader to a SPIR-V binary before release!\n(This function should not be used in release builds!)");
@@ -231,10 +231,10 @@ void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str source
         stage = EShLangCount;
     }
 
-    // Initalize glslang if it hasn't been initalized yet
+    // Initialize glslang if it hasn't been initialized yet
     static bool glslangInitalized = false;
     if(!glslangInitalized) glslangInitalized = glslang::InitializeProcess();
-    if(!glslangInitalized) throw std::runtime_error("Failed to initalize glslang");
+    if(!glslangInitalized) throw std::runtime_error("Failed to initialize glslang");
 
     // Create the shader
     glslang::TShader shader(stage);
@@ -246,17 +246,17 @@ void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str source
     shader.setEntryPoint(entryPoint);
 
     // Preprocess the shader
-    DirStackFileIncluder includer; // #Include preprocesser
-    str preproccesedCode;
+    DirStackFileIncluder includer; // #Include preprocessor
+    str preprocessedCode;
     EShMessages messages = (EShMessages) (EShMsgSpvRules | EShMsgVulkanRules);
-    if(!shader.preprocess(&DefaultTBuiltInResource, /*default version*/ 100, EProfile::ENoProfile, false, false, messages, &preproccesedCode, includer)){
+    if(!shader.preprocess(&DefaultTBuiltInResource, /*default version*/ 100, EProfile::ENoProfile, false, false, messages, &preprocessedCode, includer)){
         if(sourceCode.size() > 100) { dlg_error("Preprocessing failed for:\n" + sourceCode.substr(0, 100) + "..."); }
         else { dlg_error("Preprocessing failed for:\n" + sourceCode); }
         std::cerr << shader.getInfoLog() << std::endl;
         std::cerr << shader.getInfoDebugLog() << std::endl;
     }
-    const char* preproccessedCString = preproccesedCode.c_str();
-    shader.setStrings(&preproccessedCString, 1);
+    const char* preprocessedCString = preprocessedCode.c_str();
+    shader.setStrings(&preprocessedCString, 1);
 
     // Parse the shader
     if(!shader.parse(&DefaultTBuiltInResource, 100, false, messages)){
@@ -278,7 +278,7 @@ void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str source
 
     // Convert the program to SPIR-V
 #if (DEBUG_SHADER_CODE == 1)
-    // Save the SPIRV for later if debug export is enabled
+    // Save the SPIR-V for later if debug export is enabled
     std::vector<uint32_t>& spirV = bytes;
 #else // #if (DEBUG_SHADER_CODE == 1)
     // Only temporarily store the data if debug export is disabled

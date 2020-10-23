@@ -21,7 +21,7 @@ protected:
 
 class Window: public RenderState {
 private:
-    // Tracks if GLFW has been initalized
+    // Tracks if GLFW has been initialized
     static bool glfwInitalized;
     // Track the number of created windows
     static size_t windowCount;
@@ -54,7 +54,7 @@ public:
     /// Forcibly changes the size of the window (similar to if the user had resized it)
     void setSize(int width, int height);
     /// Gets the total size of the window.
-    ///  The returned result is measured in screen choordinates and is not garunteed.
+    ///  The returned result is measured in screen coordinates and is not guaranteed.
     ///  to match the pixel value.
     std::pair<int, int> getTotalSize() const;
     /// Gets the size of our framebuffer (the size of the image we need to create).
@@ -71,8 +71,8 @@ public:
     ///  If no mode is specified the window is considered windowed fullscreen and just
     ///      takes on the settings of the monitor it is attached to
     void makeFullscreen(Monitor monitor = Monitor::Primary(), const Monitor::VideoMode* mode = Monitor::Primary().videoMode());
-    /// Makes the window nolonger fullscreened.
-    ///  If width and height aren't specifed, the size of the window before it became
+    /// Makes the window no longer fullscreened.
+    ///  If width and height aren't specified, the size of the window before it became
     ///      fullscreened is used instead.
     void makeWindowed(int width = -1, int height = -1);
 
@@ -90,7 +90,7 @@ public:
     void restore();
 
     void recreateSwapchain();
-    // Overide to the main loop function which abandons the loop if the window has already been closed or minimized
+    // Override to the main loop function which abandons the loop if the window has already been closed or minimized
     virtual bool mainLoop(uint64_t frame) { if(!window || pauseLoop) return false; return RenderState::mainLoop(frame); }
 
     /// Returns true if the window has been destroyed

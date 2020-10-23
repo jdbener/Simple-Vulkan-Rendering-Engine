@@ -1,20 +1,20 @@
 #include "renderState.hpp"
 #include <map>
 
-// Initalize the id list
+// Initialize the id list
 uint16_t VulkanState::nextID = 0;
 
 /// Bind an already existing custom pipeline
 void VulkanState::bindPipeline(vpp::Pipeline&& _pipeline) {
     pipeline = std::move(_pipeline);
 
-    // Once the pipeline is bound, rerecord the command buffers
+    // Once the pipeline is bound, re-record the command buffers
     rerecordCommandBuffers();
 }
 
 /// Gets the width and height of the swapchain.
 ///     Requires <surface> already be set
-///     If pd is ommitted uses the one bound to the <swapchain>
+///     If pd is omitted uses the one bound to the <swapchain>
 vk::Extent2D RenderState::swapchainExtent(vk::PhysicalDevice pd, bool ignoreCache){
     // Caching
     static std::map<vk::SurfaceKHR, vk::Extent2D> cache;
@@ -26,7 +26,7 @@ vk::Extent2D RenderState::swapchainExtent(vk::PhysicalDevice pd, bool ignoreCach
     // Default
     vk::Extent2D chosenExtent = capabilities.currentExtent;
 
-    // Clamp the width and height with in acceptable bounds if our window manager allows us to tweak the bounds.
+    // Clamp the width and height within acceptable bounds if our window manager allows us to tweak the bounds.
     if(chosenExtent.width == UINT32_MAX){
         chosenExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, chosenExtent.width));
         chosenExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, chosenExtent.height));
@@ -39,7 +39,7 @@ vk::Extent2D RenderState::swapchainExtent(vk::PhysicalDevice pd, bool ignoreCach
 
 /// Gets the image format of the swapchain.
 ///     Requires <surface> already be set
-///     If pd is ommitted uses the one bound to the <swapchain>
+///     If pd is omitted uses the one bound to the <swapchain>
 vk::SurfaceFormatKHR RenderState::swapchainFormat(vk::PhysicalDevice pd, bool ignoreCache){
     // Caching
     static std::map<vk::SurfaceKHR, vk::SurfaceFormatKHR> cache;
@@ -65,7 +65,7 @@ vk::SurfaceFormatKHR RenderState::swapchainFormat(vk::PhysicalDevice pd, bool ig
 
 /// Gets the presentation mode of the swapchain.
 ///     Requires <surface> already be set.
-///     If pd is ommitted uses the one bound to the <swapchain>
+///     If pd is omitted uses the one bound to the <swapchain>
 vk::PresentModeKHR RenderState::swapchainPresentMode(vk::PhysicalDevice pd, bool ignoreCache){
     // Caching
     static std::map<vk::SurfaceKHR, vk::PresentModeKHR> cache;
@@ -79,7 +79,7 @@ vk::PresentModeKHR RenderState::swapchainPresentMode(vk::PhysicalDevice pd, bool
 
     // Choose the present mode we want if available
     for(vk::PresentModeKHR& mode: modes)
-        // Mailbox will overwite images in the presentation queue if we render too fast
+        // Mailbox will overwrite images in the presentation queue if we render too fast
         if(mode == vk::PresentModeKHR::mailbox){
             chosenMode = mode;
             break;
@@ -90,9 +90,9 @@ vk::PresentModeKHR RenderState::swapchainPresentMode(vk::PhysicalDevice pd, bool
     return chosenMode;
 }
 
-/// Gets the number of images which can be rendering at once.
+/// Gets the number of images which can be rendered at once.
 ///     Requires <surface> already be set
-///     If pd is ommitted uses the one bound to the <swapchain>
+///     If pd is omitted uses the one bound to the <swapchain>
 uint32_t RenderState::swapchainImageCount(vk::PhysicalDevice pd, bool ignoreCache){
     // Caching
     static std::map<vk::SurfaceKHR, uint32_t> cache;
@@ -196,13 +196,13 @@ void RenderState::createGraphicsRenderPass(std::vector<vk::ImageLayout> _colorAt
         device(), {/*flags*/ {},
         /* attachment*/ 1, &attachment,
         /* subpass*/ 1, &subpass,
-        /* dependancy */ 0, nullptr}
+        /* dependency */ 0, nullptr}
     };
 }
 
 /// Function which sets up all of the data stored in the <renderBuffers>
 void RenderState::recreateRenderBuffers(){
-    // Wait for everthing currently queued to finish rendering
+    // Wait for everything currently queued to finish rendering
     device().waitIdle();
     // Invalidate the recordings in our command pool
     vk::resetCommandPool(device().vkDevice(), commandPool.vkHandle());
@@ -219,7 +219,7 @@ void RenderState::recreateRenderBuffers(){
         renderBuffers[i].imageView = {device(), {/*flags*/ {}, images[i], vk::ImageViewType::e2d, swapchainFormat().format,
             // Mapping each color channel (rgba) to itself
             {vk::ComponentSwizzle::identity, vk::ComponentSwizzle::identity, vk::ComponentSwizzle::identity, vk::ComponentSwizzle::identity},
-            // This view will be used for color, with no steroscopic layers or mipmaping
+            // This view will be used for color, with no stereoscopic layers or mipmapping
             {vk::ImageAspectBits::color, 0, 1, 0, 1}
         }};
 
@@ -240,7 +240,7 @@ void RenderState::recreateRenderBuffers(){
     }
 }
 
-/// Function which recordes to the buffers
+/// Function which records the command buffers
 ///     Is automatically called after a pipeline is bound
 bool RenderState::rerecordCommandBuffers(){
     // Calculate the size and viewport
@@ -269,7 +269,7 @@ bool RenderState::rerecordCommandBuffers(){
 }
 
 /// Function to be called by the main loop every frame
-///     Implementaion needs to handle the case where this object is no longer valid
+///     Implementation needs to handle the case where this object is no longer valid
 ///     Automatically resizes the swapchain when it becomes outdated (ex window resized)
 bool RenderState::mainLoop(uint64_t frame){
     try{

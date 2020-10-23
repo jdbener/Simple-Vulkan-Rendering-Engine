@@ -6,7 +6,7 @@
 bool Window::glfwInitalized = false;
 size_t Window::windowCount = 0;
 
-// Callback which occures when the window is closed, does the bookkeeping to
+// Callback which occurs when the window is closed, does the bookkeeping to
 //  track its closure.
 void _WindowCloseCallback(GLFWwindow* _window){
     Window* window = (Window*) glfwGetWindowUserPointer(_window);
@@ -16,7 +16,7 @@ void _WindowCloseCallback(GLFWwindow* _window){
     window->destroy();
 }
 
-// Callback which updates the flag signifing that the main loop should pause while
+// Callback which updates the flag signifying that the main loop should pause while
 //  minimized
 void _WindowMinimizedCallback(GLFWwindow* _window, int minimized){
     Window* window = (Window*) glfwGetWindowUserPointer(_window);
@@ -29,7 +29,7 @@ void _WindowMinimizedCallback(GLFWwindow* _window, int minimized){
 
 // Creates a new window with an attached vulkan rendering surface
 Window::Window(vpp::Instance& instance, int width, int height, str _name, DeviceCreateInfo deviceInfo, std::vector<std::pair<int, int>> windowCreationHints) : name(_name) {
-    // Initalize GLFW if nessicary
+    // Initialize GLFW if necessary
     if(!glfwInitalized){
         dlg_info("Initalizing GLFW");
         if(!glfwInit()) throw std::runtime_error("Failed to initalize GLFW!");
@@ -116,7 +116,7 @@ void Window::setSize(int width, int height){
 }
 
 // Gets the total size of the window
-//  The returned result is measured in screen choordinates and is not garunteed
+//  The returned result is measured in screen coordinates and is not guaranteed
 //  to match the pixel value.
 std::pair<int, int> Window::getTotalSize() const{
     if(!window) throw WindowNotFound(name);
@@ -159,8 +159,8 @@ void Window::makeFullscreen(Monitor monitor, const Monitor::VideoMode* mode){
     glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
 }
 
-// Makes the window nolonger fullscreened.
-//  If width and height aren't specifed, the size of the window before it became
+// Makes the window no longer fullscreened.
+//  If width and height aren't specified, the size of the window before it became
 //      fullscreened is used instead.
 void Window::makeWindowed(int width, int height){
     if(!window) throw WindowNotFound(name);
@@ -255,20 +255,20 @@ bool Window::close(){
 // ---------------------
 // Process any window events and then continue
 void Window::pollEvents(){
-    if (!glfwInitalized) throw std::runtime_error("Can't process events before GLFW has been initalized!");
+    if (!glfwInitalized) throw std::runtime_error("Can't process events before GLFW has been initialized!");
     glfwPollEvents();
 }
 
 // Wait for a window event to process and then continue
 void Window::waitEvents(){
-    if (!glfwInitalized) throw std::runtime_error("Can't process events before GLFW has been initalized!");
+    if (!glfwInitalized) throw std::runtime_error("Can't process events before GLFW has been initialized!");
     glfwWaitEvents();
 }
 
 // Returns a list of vulkan extensions which need to be enabled to create
 //  window surfaces
 std::vector<const char*> Window::requiredVulkanExtensions(){
-    // Initalize GLFW if nessicary
+    // Initialize GLFW if necessary
     if(!glfwInitalized){
         dlg_info("Initalizing GLFW");
         if(!glfwInit()) throw std::runtime_error("Failed to initalize GLFW!");

@@ -11,7 +11,7 @@
         // code here
     }
 
-    Will repeat the provided code x times. (A counter "_i" storing the itteration
+    Will repeat the provided code x times. (A counter "_i" storing the iteration
     index will always be present)
 
     Ex:
