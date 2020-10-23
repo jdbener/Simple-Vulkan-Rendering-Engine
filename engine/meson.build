@@ -4,6 +4,7 @@ engine_sources = [
   'vulkan/renderState.cpp',
   'common.cpp',
   'window.cpp',
+  'monitor.cpp',
 
 ]
 

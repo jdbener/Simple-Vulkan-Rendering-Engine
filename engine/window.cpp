@@ -12,7 +12,19 @@ void _WindowCloseCallback(GLFWwindow* _window){
     Window* window = (Window*) glfwGetWindowUserPointer(_window);
     // Process any pending events
     Window::pollEvents();
+    // Explicitly destroy the window
     window->destroy();
+}
+
+// Callback which updates the flag signifing that the main loop should pause while
+//  minimized
+void _WindowMinimizedCallback(GLFWwindow* _window, int minimized){
+    Window* window = (Window*) glfwGetWindowUserPointer(_window);
+    // Stop this window's rendering loop while the window is suspended, restart
+    //  it when restored
+    window->pauseLoop = minimized;
+    if(window->pauseLoop) { dlg_info("Window '" + str(window->getName()) + "'s main loop suspended."); }
+    else dlg_info("Window '" + str(window->getName()) + "'s main loop resumed.");
 }
 
 // Creates a new window with an attached vulkan rendering surface
@@ -70,8 +82,8 @@ Window::Window(vpp::Instance& instance, int width, int height, str _name, Device
     glfwSetWindowUserPointer(window, this);
     // Register the close callback
     glfwSetWindowCloseCallback(window, &_WindowCloseCallback);
-    // Register the resize callback
-    //glfwSetWindowSizeCallback(window, &_WindowResizeCallback);
+    // Register the minimize callback
+    glfwSetWindowIconifyCallback(window, &_WindowMinimizedCallback);
 }
 
 // Destroy the window when it goes out of scope
@@ -84,6 +96,17 @@ Window::~Window(){
         glfwInitalized = false;
         glfwTerminate();
     }
+}
+
+// Destroy the window
+bool Window::destroy(){
+    // Destroy the window if it exists
+    if(!window) return false;
+    glfwDestroyWindow(window);
+    window = nullptr; // Note to the rest of the class that the window no longer exists
+    windowCount--;
+
+    return true;
 }
 
 // Forcibly changes the size of the window (similar to if the user had resized it)
@@ -124,6 +147,74 @@ void Window::setName(str& _name){
     glfwSetWindowTitle(window, name.c_str());
 }
 
+// Makes the window fullscreened.
+//  If no monitor is specified the primary one is used.
+//  If no mode is specified the window is considered windowed fullscreen and just
+//      takes on the settings of the monitor it is attached to
+void Window::makeFullscreen(Monitor monitor, const Monitor::VideoMode* mode){
+    if(!window) throw WindowNotFound(name);
+    // Save the dimensions of the old window
+    savedWindowDimensions = getTotalSize();
+    // Make the window fullscreened on the specified monitor
+    glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+}
+
+// Makes the window nolonger fullscreened.
+//  If width and height aren't specifed, the size of the window before it became
+//      fullscreened is used instead.
+void Window::makeWindowed(int width, int height){
+    if(!window) throw WindowNotFound(name);
+    // If we haven't specified the requested dimensions
+    if(width < 0 || height < 0){
+        // Use the cached dimensions
+        if(savedWindowDimensions) std::tie(width, height) = *savedWindowDimensions;
+        // Or error if they haven't been set
+        else throw std::runtime_error("Tried to unfullscreen a window '" + name + "' which was never fullscreened.");
+    }
+
+    // Clear out any saved dimensions
+    savedWindowDimensions.reset();
+    // Make the window windowed
+    glfwSetWindowMonitor(window, nullptr, 0, 0, width, height, /* Don't care about refresh rate*/-1);
+}
+
+// Brings the window to the front and sets it as input focused
+void Window::focus() const {
+    if(!window) throw WindowNotFound(name);
+    glfwFocusWindow(window);
+}
+
+// Requests that the user interact with the window
+void Window::pingUser() const {
+    if(!window) throw WindowNotFound(name);
+    glfwRequestWindowAttention(window);
+}
+
+// Toggles weather or not the window is minimized
+//  Signals that the main loop should stop running while minimized
+void Window::minimize() {
+    if(!window) throw WindowNotFound(name);
+    int minimized = glfwGetWindowAttrib(window, GLFW_ICONIFIED);
+
+    if(!minimized) glfwIconifyWindow(window);
+    else restore();
+}
+
+// Toggles weather or not the window is maximized
+void Window::maximize() {
+    if(!window) throw WindowNotFound(name);
+    int maximized = glfwGetWindowAttrib(window, GLFW_MAXIMIZED);
+
+    if(!maximized) glfwMaximizeWindow(window);
+    else restore();
+}
+
+// Restores the window to its normal state if it is maximized or minimized
+void Window::restore(){
+    if(!window) throw WindowNotFound(name);
+    glfwRestoreWindow(window);
+}
+
 // Recreates the swapchain
 void Window::recreateSwapchain(){
     if(!window) throw WindowNotFound(name);
@@ -133,20 +224,6 @@ void Window::recreateSwapchain(){
     newSize.width = width; newSize.height = height;
 
     RenderState::recreateSwapchain({}, newSize);
-}
-
-// Swap the queued framebuffer with the currently visible framebuffer.
-//  A.k.a show the next image.
-// void Window::swapBuffers(){
-//     if(!window) throw WindowNotFound(name);
-//
-//     glfwSwapBuffers(window);
-// }
-
-// Returns true if the window has been closed (by calling close or clicking the
-//  X in the os.)
-bool Window::shouldClose() const{
-    return glfwWindowShouldClose(window);
 }
 
 // Returns true if the window has been destroyed
@@ -159,22 +236,17 @@ bool Window::isClosed() const {
     return isDestroyed();
 }
 
+// Returns true if the window has been closed (by calling close or clicking the
+//  X in the os.)
+bool Window::shouldClose() const{
+    return glfwWindowShouldClose(window);
+}
+
 // Close the window (the window will still exist until it goes out of scope or
-//  is destroyed by can't be used any further.)
+//  is destroyed but can't be used any further.)
 bool Window::close(){
     if(!window) return false;
     glfwWindowShouldClose(window);
-    return true;
-}
-
-// Destroy the window
-bool Window::destroy(){
-    // Destroy the window if it exists
-    if(!window) return false;
-    glfwDestroyWindow(window);
-    window = nullptr; // Note to the rest of the class that the window no longer exists
-    windowCount--;
-
     return true;
 }
 
@@ -209,7 +281,6 @@ std::vector<const char*> Window::requiredVulkanExtensions(){
 }
 
 // Returns true if all windows which have been opened so far have been closed.
-//  Intenteded to be used to determine when the main loop should end.
 bool Window::allWindowsClosed(){
     return windowCount == 0;
 }
