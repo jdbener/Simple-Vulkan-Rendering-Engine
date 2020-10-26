@@ -184,7 +184,8 @@ public:
     ///  Allows partitioning of a subset of the input stream.
     ///  By default the entire input stream will be stored in the string.
     static str stream(std::istream& s, size_t start = 0, long len = -1){
-        return (char*) readStream(s, start, len).data();
+        auto data = readStream(s, start, len);
+        return {(const char*) data.data(), data.size()};
     }
 
     /// Creates a string by getting the next line of the input file

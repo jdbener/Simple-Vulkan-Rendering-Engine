@@ -192,6 +192,7 @@ void Window::pingUser() const {
 
 // Toggles weather or not the window is minimized
 //  Signals that the main loop should stop running while minimized
+// NOTE: possibly instead of freezing the mainloop while minimized, once fps limiting is implemented drop the fps limit to like 1 or 5 but keep it running
 void Window::minimize() {
     if(!window) throw WindowNotFound(name);
     int minimized = glfwGetWindowAttrib(window, GLFW_ICONIFIED);

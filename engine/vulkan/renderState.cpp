@@ -17,7 +17,7 @@ void VulkanState::bindPipeline(vpp::Pipeline&& _pipeline) {
 ///     If pd is omitted uses the one bound to the <swapchain>
 vk::Extent2D RenderState::swapchainExtent(vk::PhysicalDevice pd, bool ignoreCache){
     // Caching
-    static std::map<vk::SurfaceKHR, vk::Extent2D> cache;
+    static std::unordered_map<vk::SurfaceKHR, vk::Extent2D> cache;
     if(!ignoreCache && cache.find(surface) != cache.end()) return cache[surface];
 
     if(!pd) pd = swapchain.vkPhysicalDevice();
@@ -42,7 +42,7 @@ vk::Extent2D RenderState::swapchainExtent(vk::PhysicalDevice pd, bool ignoreCach
 ///     If pd is omitted uses the one bound to the <swapchain>
 vk::SurfaceFormatKHR RenderState::swapchainFormat(vk::PhysicalDevice pd, bool ignoreCache){
     // Caching
-    static std::map<vk::SurfaceKHR, vk::SurfaceFormatKHR> cache;
+    static std::unordered_map<vk::SurfaceKHR, vk::SurfaceFormatKHR> cache;
     if(!ignoreCache && cache.find(surface) != cache.end()) return cache[surface];
 
     if(!pd) pd = swapchain.vkPhysicalDevice();
@@ -68,7 +68,7 @@ vk::SurfaceFormatKHR RenderState::swapchainFormat(vk::PhysicalDevice pd, bool ig
 ///     If pd is omitted uses the one bound to the <swapchain>
 vk::PresentModeKHR RenderState::swapchainPresentMode(vk::PhysicalDevice pd, bool ignoreCache){
     // Caching
-    static std::map<vk::SurfaceKHR, vk::PresentModeKHR> cache;
+    static std::unordered_map<vk::SurfaceKHR, vk::PresentModeKHR> cache;
     if(!ignoreCache && cache.find(surface) != cache.end()) return cache[surface];
 
     if(!pd) pd = swapchain.vkPhysicalDevice();
@@ -95,7 +95,7 @@ vk::PresentModeKHR RenderState::swapchainPresentMode(vk::PhysicalDevice pd, bool
 ///     If pd is omitted uses the one bound to the <swapchain>
 uint32_t RenderState::swapchainImageCount(vk::PhysicalDevice pd, bool ignoreCache){
     // Caching
-    static std::map<vk::SurfaceKHR, uint32_t> cache;
+    static std::unordered_map<vk::SurfaceKHR, uint32_t> cache;
     if(!ignoreCache && cache.find(surface) != cache.end()) return cache[surface];
 
     if(!pd) pd = swapchain.vkPhysicalDevice();

@@ -22,7 +22,7 @@ std::ostream& operator <<(std::ostream& s, std::pair<int, int> size){
 }
 
 int main(){
-    vk::ApplicationInfo appInfo("Project Delta", GAME_VERSION, "Delta Engine", ENGINE_VERSION, VK_API_VERSION_1_1);
+    vk::ApplicationInfo appInfo("Project Delta", GAME_VERSION, "Delta Engine", ENGINE_VERSION, VK_API_VERSION_1_2);
 
     //std::vector<const char*> layers = validateInstanceLayers({"VK_LAYER_KHRONOS_validation"});
     std::vector<const char*> layers = validateInstanceLayers({});

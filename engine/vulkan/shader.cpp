@@ -21,6 +21,7 @@ SPIRVShaderModule::SPIRVShaderModule(const vpp::Device& dev, nytl::Span<const ui
   : vpp::ShaderModule(dev, _bytes){
 #if (DEBUG_SHADER_CODE == 1)
       bytes = {_bytes.begin(), _bytes.end()};
+      bytes.shrink_to_fit();
 #endif // #if (DEBUG_SHADER_CODE == 1)
 }
 
@@ -45,6 +46,7 @@ SPIRVShaderModule::SPIRVShaderModule(const vpp::Device& dev, std::istream& sourc
         sourceFile.clear();
         // Load in the byte code;
         bytes = loadShaderBytes(sourceFile);
+        bytes.shrink_to_fit();
 #endif // #if (DEBUG_SHADER_CODE == 1)
     }
 
@@ -116,7 +118,7 @@ GLSLShaderModule::GLSLShaderModule(const vpp::Device& dev, std::istream& sourceF
 //  Saves the resulting binary array if the debugging mode is turned on
 //  NOTE: Slightly modified from: https://forestsharp.com/glslang-cpp/
 void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str sourceCode, vk::ShaderStageBits _stage, str entryPoint){
-    dlg_warn("Be sure to compile this shader to a SPIR-V binary before release!\n(This function should not be used in release builds!)");
+    dlg_warn("Be sure to compile this shader to a SPIR-V binary before release! (This function should not be used in release builds!)");
 
     // TODO: Look at what all is in this monolithic beast
     TBuiltInResource DefaultTBuiltInResource = {
@@ -215,7 +217,6 @@ void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str source
         /* .generalVariableIndexing = */ 1,
         /* .generalConstantMatrixVectorIndexing = */ 1,
     };
-    //TBuiltInResource DefaultTBuiltInResource = {};
 
     // Convert the shader stage from a vulkan stage to a glslang stage
     EShLanguage stage;
@@ -240,9 +241,9 @@ void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str source
     glslang::TShader shader(stage);
     const char* sourceCString = sourceCode;
     shader.setStrings(&sourceCString, 1);
-    shader.setEnvInput(glslang::EShSource::EShSourceGlsl, stage, glslang::EShClient::EShClientVulkan, glslang::EShTargetVulkan_1_1);
-    shader.setEnvClient(glslang::EShClient::EShClientVulkan, glslang::EShTargetClientVersion::EShTargetVulkan_1_1);
-    shader.setEnvTarget(glslang::EShTargetLanguage::EShTargetSpv, glslang::EShTargetLanguageVersion::EShTargetSpv_1_3);
+    shader.setEnvInput(glslang::EShSource::EShSourceGlsl, stage, glslang::EShClient::EShClientVulkan, glslang::EShTargetVulkan_1_2);
+    shader.setEnvClient(glslang::EShClient::EShClientVulkan, glslang::EShTargetClientVersion::EShTargetVulkan_1_2);
+    shader.setEnvTarget(glslang::EShTargetLanguage::EShTargetSpv, glslang::EShTargetLanguageVersion::EShTargetSpv_1_5);
     shader.setEntryPoint(entryPoint);
 
     // Preprocess the shader
@@ -285,6 +286,11 @@ void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str source
     std::vector<uint32_t> spirV;
 #endif // #if (DEBUG_SHADER_CODE == 1)
     glslang::GlslangToSpv(*program.getIntermediate(stage), spirV);
+
+    // Shrink the debug reflection object so that it is taking up as little space as possible.
+#if (DEBUG_SHADER_CODE == 1)
+    bytes.shrink_to_fit();
+#endif // #if (DEBUG_SHADER_CODE == 1)
 
     // Create shader module
     vpp::ShaderModule module(device, spirV);
