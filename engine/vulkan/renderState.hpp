@@ -31,6 +31,8 @@ public:
 protected:
     // Used to store the memory of the vulkan logical device we create for this window
     std::unique_ptr<VulkDevice> _device = nullptr;
+    // Function pointer which stores a reference to extra command buffer recording steps
+    std::function<void (vpp::CommandBuffer&)> customCommandRecordingSteps = {};
 
 public:
     vpp::Pipeline pipeline;
@@ -48,6 +50,10 @@ public:
 
     /// Bind an already existing custom pipeline
     void bindPipeline(vpp::Pipeline&&);
+    /// Set any custom steps which need to be recorded to the internal command buffer
+    ///     The provided function will always be called right before the draw/compute call
+    ///     Command buffers must be rerecorded when this is changed
+    void bindCustomCommandRecordingSteps(std::function<void (vpp::CommandBuffer&)> _new);
 
     /// Function which records to the buffers.
     ///     Is automatically called after a pipeline is bound
@@ -98,8 +104,13 @@ public:
     ///     If pd is omitted uses the one bound to the <swapchain>
     uint32_t swapchainImageCount(vk::PhysicalDevice pd = {}, bool ignoreCache = false);
 
+    /// Creates the pipeline create info for this state which can then be modified and bound
+    vpp::GraphicsPipelineInfo createGraphicsPipelineInfo(vpp::ShaderProgram&&, nytl::Span<const vk::DescriptorSetLayout> layouts = {}, nytl::Span<const vk::PushConstantRange> ranges = {});
+    /// Bind a graphics pipeline based on the provided pipeline info
+    void bindPipeline(vpp::GraphicsPipelineInfo& createInfo);
+    void bindPipeline(vpp::GraphicsPipelineInfo&& createInfo) { bindPipeline(createInfo); }
     /// Bind a default pipeline based on the specified shader program
-    void bindPipeline(vpp::ShaderProgram&&, nytl::Span<const vk::DescriptorSetLayout> layouts = {}, nytl::Span<const vk::PushConstantRange> ranges = {});
+    void bindPipeline(vpp::ShaderProgram&& program, nytl::Span<const vk::DescriptorSetLayout> layouts = {}, nytl::Span<const vk::PushConstantRange> ranges = {}) { bindPipeline(createGraphicsPipelineInfo(std::move(program), layouts, ranges)); }
 
     /// Recreates the swapchain.
     ///  If a valid deviceInfo is passed in, the swapchain will be recreated with the new physical device.

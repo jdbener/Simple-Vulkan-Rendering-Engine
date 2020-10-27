@@ -24,7 +24,7 @@ dep_rvg = dependency('rvg', fallback: ['rvg', 'rvg_dep'], default_options: ['def
 deps_rvg = [dep_dlg, dep_nytl, dep_vkpp, dep_katachi, dep_vpp, dep_rvg]
 
 engine_inc = include_directories('.')
-engine_dependancies = [dep_vulkan, dep_glfw, dep_glslang, deps_rvg]
+engine_dependancies = [dep_vulkan, dep_glfw, dep_glslang, dep_glm, deps_rvg]
 
 subdir('engine')
 engine_dep = declare_dependency(

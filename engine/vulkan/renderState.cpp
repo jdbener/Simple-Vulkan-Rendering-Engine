@@ -12,6 +12,14 @@ void VulkanState::bindPipeline(vpp::Pipeline&& _pipeline) {
     rerecordCommandBuffers();
 }
 
+/// Set any custom steps which need to be recorded to the internal command buffer
+///     The provided function will always be called right before the draw/compute call
+///     Command buffers must be rerecorded when this is changed
+void VulkanState::bindCustomCommandRecordingSteps(std::function<void (vpp::CommandBuffer&)> _new) {
+    customCommandRecordingSteps = _new;
+};
+
+
 /// Gets the width and height of the swapchain.
 ///     Requires <surface> already be set
 ///     If pd is omitted uses the one bound to the <swapchain>
@@ -113,11 +121,16 @@ uint32_t RenderState::swapchainImageCount(vk::PhysicalDevice pd, bool ignoreCach
     return imageCount;
 }
 
-/// Bind a default pipeline based on the specified shader program
-void RenderState::bindPipeline(vpp::ShaderProgram&& program, nytl::Span<const vk::DescriptorSetLayout> layouts, nytl::Span<const vk::PushConstantRange> ranges) {
-    vpp::PipelineLayout layout(device(), layouts, ranges);
-    vpp::GraphicsPipelineInfo pipelineInfo(renderPass, layout.vkHandle(), std::move(program));
-    VulkanState::bindPipeline({device(), pipelineInfo.info()});
+/// Creates the pipeline create info for this state which can then be modified and bound
+vpp::GraphicsPipelineInfo RenderState::createGraphicsPipelineInfo(vpp::ShaderProgram&& program, nytl::Span<const vk::DescriptorSetLayout> layouts, nytl::Span<const vk::PushConstantRange> ranges) {
+    vk::PipelineLayout layout = vpp::PipelineLayout(device(), layouts, ranges).release();
+    return {renderPass, layout, std::move(program)};
+}
+
+/// Bind a graphics pipeline based on the provided pipeline info
+void RenderState::bindPipeline(vpp::GraphicsPipelineInfo& createInfo) {
+    VulkanState::bindPipeline({device(), createInfo.info()});
+    vk::destroyPipelineLayout(device(), createInfo.info().layout);
 }
 
 // Utility function used by recreate swapchain to pick the properties of the swapchain
@@ -261,6 +274,10 @@ bool RenderState::rerecordCommandBuffers(){
         vk::cmdBindPipeline(buffer.commandBuffer, vk::PipelineBindPoint::graphics, pipeline);
         vk::cmdSetViewport(buffer.commandBuffer, 0, 1, viewport);
         vk::cmdSetScissor(buffer.commandBuffer, 0, 1, scissor);
+
+        // Any custom bindings (like vertex buffers)
+        if(customCommandRecordingSteps) customCommandRecordingSteps(buffer.commandBuffer);
+
         vk::cmdDraw(buffer.commandBuffer, /*vertCount*/ 3, /*instanceCount*/ 1, /*firstVertex*/ 0, /*firstInstance*/ 0);
     }
 

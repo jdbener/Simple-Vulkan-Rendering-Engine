@@ -64,12 +64,13 @@ Window::Window(vpp::Instance& instance, int width, int height, str _name, Device
     RenderState::recreateSwapchain(deviceInfo);
 
     // Create a command pool for this window, from the queue with support for both graphics and transfer
+
     try {
-        commandPool = vpp::CommandPool(device(), {{}, device().presentQueueExcept()->family()});
+        commandPool = vpp::CommandPool(device(), {(vk::CommandPoolCreateBits) VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, device().presentQueueExcept()->family()});
     // Falls back to creating from the queue with graphics support
     } catch (vk::VulkanError& e){
         dlg_warn("Falling back to graphics queue for window '" + name + "'");
-        commandPool = vpp::CommandPool(device(), {{}, device().graphicsQueue()->family()});
+        commandPool = vpp::CommandPool(device(), {(vk::CommandPoolCreateBits) VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, device().graphicsQueue()->family()});
     }
 
     // Create a renderpass for the window with a single color attachment which will be drawn to the surface
