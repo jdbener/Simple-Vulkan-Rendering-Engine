@@ -61,6 +61,44 @@ public:
     /// Function to be called by the main loop every frame.
     ///     Implementation needs to handle the case where this object is no longer valid
     virtual bool mainLoop(uint64_t frame) = 0;
+
+
+    /// Copies the provided data into the given buffer through a stagging buffer.
+    ///     Submits the operation on the device attached to the provided state.
+    ///     The input buffer must be marked as a vk::BufferUsageBits::transferDst.
+    ///     If flagged to wait for the opperation to finish, it will do so; otherwise
+    ///         it will return the submition ID for future syncronization.
+    ///     If a command buffer is provided, that buffer will be overwritten and used;
+    ///         otherwise a new buffer will be allocated and then destroyed.
+    ///     The provided command buffer will never be destroyed.
+    template <typename T>
+    uint64_t fillStaging(vpp::BufferSpan buffer, nytl::span<T> data, const bool wait = true, vpp::CommandBuffer cb = {}){
+        // At the end of the function, if we should release the command buffer (we
+        //  didn't create it and thus shouldn't destroy it), release it
+        // WARNING: WATCH THIS FOR BUGS
+        bool release = cb;
+        defer(if(release) cb.release();, cr);
+
+        // Create a command buffer if one wasn't provided
+        if(!cb) cb = commandPool.allocate();
+
+        // Record the command buffer
+        vk::beginCommandBuffer(cb, {});
+        vpp::SubBuffer stagingBuff = vpp::fillStaging(cb, buffer, nytl::span<std::byte>{(std::byte*) data.data(), data.size() * sizeof(data[0])});
+        vk::endCommandBuffer(cb);
+
+        // Add the buffer to the submittion queue...
+        vpp::QueueSubmitter& submitter = device().queueSubmitter();
+        uint64_t out = submitter.add(cb);
+        // And submit it then wait for it to finish...
+        if(wait) return submitter.wait(out);
+        // Or just submit it
+        else submitter.submit(out);
+        return out;
+    }
+    template <typename T>
+    uint64_t fillStaging(vpp::BufferSpan buffer, std::vector<T>& data, const bool wait = true, vpp::CommandBuffer cb = {})
+    { return fillStaging(buffer, nytl::span{data}, wait, std::move(cb)); }
 };
 
 /// Class which stores all of the variables needed to render to the screen

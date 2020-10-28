@@ -77,30 +77,27 @@ int main(){
         pipelineInfo.vertex.pVertexAttributeDescriptions = attributes.data();
     }
 
-    // TODO gltf importer https://github.com/syoyo/tinygltf
-
     std::vector<Vertex> vertecies {
         {{0.0, -0.5}, {1.0, 0.0, 0.0}},
         {{0.5, 0.5}, {0.0, 1.0, 0.0}},
-        {{-0.5, 0.5}, {0.0, 1, 1.0}}
+        {{-0.5, 0.5}, {0.0, 0, 1.0}}
     };
     // TODO: Does setting the MemoryPropertyBits here do what I think it does?
-    vpp::SubBuffer vertBuff(w.device().bufferAllocator(), sizeof(vertecies[0]) * vertecies.size(), vk::BufferUsageBits::vertexBuffer, vk::MemoryPropertyBits::hostVisible | vk::MemoryPropertyBits::hostCoherent);
-    {
-        // Store the vertex data in the buffer
-        auto map = vertBuff.memoryMap();
-        memcpy(map.ptr(), vertecies.data(), map.size());
-    }
+    vpp::SubBuffer vertBuff(w.device().bufferAllocator(), sizeof(vertecies[0]) * vertecies.size(), vk::BufferUsageBits::vertexBuffer | vk::BufferUsageBits::transferDst, (unsigned int) vk::MemoryPropertyBits::deviceLocal);
+
+    // Copy the vertecies into the vertex buffer
+    w.fillStaging(vertBuff, vertecies);
 
     w.bindCustomCommandRecordingSteps([&](vpp::CommandBuffer& buffer){
         // Bind the vertex buffer
         vk::cmdBindVertexBuffers(buffer, 0, std::vector<vk::Buffer>{vertBuff.buffer().vkHandle()}, std::vector<vk::DeviceSize>{vertBuff.offset()});
-        std::cout << "bound vertex buffer" << std::endl;
     });
 
     // I think this step needs to be explicit
     w.bindPipeline(pipelineInfo);
 
+
+    // TODO gltf importer https://github.com/syoyo/tinygltf
 
 
     uint64_t frame = 0;

@@ -9,8 +9,14 @@
 
 #include <dlg/dlg.hpp>      // logger
 #include <nytl/scope.hpp>   // Scopeguard
+#include <nytl/span.hpp>    // Span
 
 #include "util/repeat.h"    // repeat loop
+
+// Macro which sets up defered function calls using nytl::ScopeGuard
+//  What is the source code to be defered till the end of the scope
+//  ID is a unique ID (since a variable is created, the variable needs to have a unique name)
+#define defer(what, id) nytl::ScopeGuard id([&]() { what });
 
 // Enable appending vectors of the same type with the + operator
 template <typename T>
@@ -33,4 +39,11 @@ std::ostream& operator<<(std::ostream& s, std::vector<T> out){
 
 std::vector<std::byte> readStream(std::istream& f, size_t start = 0, long len = -1);
 
-#define defer(what, id) nytl::ScopeGuard id([&]() { what });
+
+namespace nytl {
+    // Makes the specified variable into a span of length 1
+    template <typename T>
+    nytl::span<T> make_span(T& what){
+        return {&what, 1};
+    }
+}
