@@ -71,33 +71,44 @@ public:
     ///     If a command buffer is provided, that buffer will be overwritten and used;
     ///         otherwise a new buffer will be allocated and then destroyed.
     ///     The provided command buffer will never be destroyed.
+    ///     If a command buffer is generated, the wait command will destroy it,
+    ///         non waiting will not. (This is a memory leak! Externally manage the buffer!)
     template <typename T>
-    uint64_t fillStaging(vpp::BufferSpan buffer, nytl::span<T> data, const bool wait = true, vpp::CommandBuffer cb = {}){
+    uint64_t fillStaging(vpp::BufferSpan buffer, nytl::span<T> data, const bool wait = true, std::optional<std::reference_wrapper<vpp::CommandBuffer>> cb = {}){
+        // Variable which stores the internal copy of the command buffer
+        vpp::CommandBuffer internalCB;
+
         // At the end of the function, if we should release the command buffer (we
         //  didn't create it and thus shouldn't destroy it), release it
         // WARNING: WATCH THIS FOR BUGS
-        bool release = cb;
-        defer(if(release) cb.release();, cr);
+        bool release = cb.has_value();
+        defer(if(release) internalCB.release();, cr);
 
         // Create a command buffer if one wasn't provided
-        if(!cb) cb = commandPool.allocate();
+        if(!cb) internalCB = commandPool.allocate(); // Invalid?
+        // Or create a copy which won't touch the original if one was provided
+        else internalCB = {cb->get().device(), cb->get().commandPool(), cb->get().vkHandle()};
 
         // Record the command buffer
-        vk::beginCommandBuffer(cb, {});
-        vpp::SubBuffer stagingBuff = vpp::fillStaging(cb, buffer, nytl::span<std::byte>{(std::byte*) data.data(), data.size() * sizeof(data[0])});
-        vk::endCommandBuffer(cb);
+        vk::beginCommandBuffer(internalCB, {});
+        vpp::SubBuffer stagingBuff = vpp::fillStaging(internalCB, buffer, nytl::span<std::byte>{(std::byte*) data.data(), data.size() * sizeof(data[0])});
+        vk::endCommandBuffer(internalCB);
 
         // Add the buffer to the submittion queue...
         vpp::QueueSubmitter& submitter = device().queueSubmitter();
-        uint64_t out = submitter.add(cb);
+        uint64_t out = submitter.add(internalCB);
         // And submit it then wait for it to finish...
         if(wait) return submitter.wait(out);
+
         // Or just submit it
-        else submitter.submit(out);
+        submitter.submit(out);
+        // And release the internal reference (it can't be freed since the queue is
+        //     running so just wait for the commandpool to clean it up.)
+        release = true;
         return out;
     }
     template <typename T>
-    uint64_t fillStaging(vpp::BufferSpan buffer, std::vector<T>& data, const bool wait = true, vpp::CommandBuffer cb = {})
+    uint64_t fillStaging(vpp::BufferSpan buffer, std::vector<T>& data, const bool wait = true, std::optional<std::reference_wrapper<vpp::CommandBuffer>> cb = {})
     { return fillStaging(buffer, nytl::span{data}, wait, std::move(cb)); }
 };
 

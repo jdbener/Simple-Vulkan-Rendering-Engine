@@ -1,4 +1,4 @@
-#include "renderState.hpp"
+#include "state.hpp"
 #include <map>
 
 // Initialize the id list
@@ -278,7 +278,7 @@ bool RenderState::rerecordCommandBuffers(){
         // Any custom bindings (like vertex buffers)
         if(customCommandRecordingSteps) customCommandRecordingSteps(buffer.commandBuffer);
 
-        vk::cmdDraw(buffer.commandBuffer, /*vertCount*/ 3, /*instanceCount*/ 1, /*firstVertex*/ 0, /*firstInstance*/ 0);
+        //vk::cmdDraw(buffer.commandBuffer, /*vertCount*/ 3, /*instanceCount*/ 1, /*firstVertex*/ 0, /*firstInstance*/ 0);
     }
 
     // If we made it this far nothing went wrong

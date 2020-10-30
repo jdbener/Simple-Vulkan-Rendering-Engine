@@ -1,7 +1,7 @@
 #include "engine/util/timer.h"
 
-#include "engine/vulkan/common.hpp"
 #include "engine/window.hpp"
+#include "engine/resource/mesh.hpp"
 
 #include "engine/vulkan/shader.hpp"
 
@@ -67,8 +67,8 @@ int main(){
 
     // Describe how verticies are laid out
     {
-        auto binding = Vertex::getBindingDescription();
-        auto attributes = Vertex::getAttributeDescriptions();
+        auto binding = MeshData::Vertex::getBindingDescription();
+        auto attributes = MeshData::Vertex::getAttributeDescriptions();
         // NOTE: When messing with the members of this struct, don't overwrite the whole struct,
         //  instead modify the individual elements which need tweaking
         pipelineInfo.vertex.vertexBindingDescriptionCount = 1;
@@ -77,24 +77,57 @@ int main(){
         pipelineInfo.vertex.pVertexAttributeDescriptions = attributes.data();
     }
 
-    std::vector<Vertex> vertecies {
+    // std::vector<Vertex> vertecies {
+    //     {{0.0, -0.5}, {1.0, 0.0, 0.0}},
+    //     {{0.5, 0.5}, {0.0, 1.0, 0.0}},
+    //     {{-0.5, 0.5}, {0.0, 0, 1.0}}
+    // };
+    std::vector<MeshData::Vertex> vertecies {
         {{0.0, -0.5}, {1.0, 0.0, 0.0}},
         {{0.5, 0.5}, {0.0, 1.0, 0.0}},
         {{-0.5, 0.5}, {0.0, 0, 1.0}}
     };
-    // TODO: Does setting the MemoryPropertyBits here do what I think it does?
-    vpp::SubBuffer vertBuff(w.device().bufferAllocator(), sizeof(vertecies[0]) * vertecies.size(), vk::BufferUsageBits::vertexBuffer | vk::BufferUsageBits::transferDst, (unsigned int) vk::MemoryPropertyBits::deviceLocal);
+    // // TODO: Does setting the MemoryPropertyBits here do what I think it does?
+    // vpp::SubBuffer vertBuff(w.device().bufferAllocator(), sizeof(vertecies[0]) * vertecies.size(), vk::BufferUsageBits::vertexBuffer | vk::BufferUsageBits::transferDst, (unsigned int) vk::MemoryPropertyBits::deviceLocal);
+    //
+    std::vector<uint16_t> indecies {
+        0, 1, 2
+    };
+    // vpp::SubBuffer indexBuff(w.device().bufferAllocator(), sizeof(indecies[0]) * indecies.size(), vk::BufferUsageBits::indexBuffer | vk::BufferUsageBits::transferDst, (unsigned int) vk::MemoryPropertyBits::deviceLocal);
+    //
+    // {
+    //     // Create two buffers which will be cleaned up once the data has been copied
+    //     vpp::CommandBuffer vertCB = w.commandPool.allocate(), indexCB = w.commandPool.allocate();
+    //
+    //     // Copy the vertecies into the vertex buffer
+    //     uint32_t vid = w.fillStaging(vertBuff, vertecies, /*wait*/ false, vertCB);
+    //     // Copy the indecies into the index buffer
+    //     uint32_t iid = w.fillStaging(indexBuff, indecies, /*wait*/ false);
+    //
+    //     std::cout << vid << " - " << iid << std::endl;
+    //
+    //     // Wait for the vertex and index buffers to both have their data coppied
+    //     w.device().queueSubmitter().wait(vid);
+    //     w.device().queueSubmitter().wait(iid);
+    // }
 
-    // Copy the vertecies into the vertex buffer
-    w.fillStaging(vertBuff, vertecies);
+    Mesh triangle(w, vertecies, indecies);
 
-    w.bindCustomCommandRecordingSteps([&](vpp::CommandBuffer& buffer){
-        // Bind the vertex buffer
-        vk::cmdBindVertexBuffers(buffer, 0, std::vector<vk::Buffer>{vertBuff.buffer().vkHandle()}, std::vector<vk::DeviceSize>{vertBuff.offset()});
-    });
 
     // I think this step needs to be explicit
     w.bindPipeline(pipelineInfo);
+
+    triangle.bindPipeline(w.pipeline);
+
+    w.bindCustomCommandRecordingSteps([&](vpp::CommandBuffer& buffer){
+        // Bind the vertex buffer
+        // vk::cmdBindVertexBuffers(buffer, 0, std::vector<vk::Buffer>{vertBuff.buffer()}, std::vector<vk::DeviceSize>{vertBuff.offset()});
+        // vk::cmdBindIndexBuffer(buffer, indexBuff.buffer(), indexBuff.offset(), vk::IndexType::uint16);
+        //
+        // vk::cmdDrawIndexed(buffer, indecies.size(), /*instances*/ 1, /*firstIndex*/ 0, /*vertexOffset*/ 0, /*firstInstance*/ 0);
+        triangle.rerecordCommandBuffer(buffer);
+    });
+    w.rerecordCommandBuffers();
 
 
     // TODO gltf importer https://github.com/syoyo/tinygltf

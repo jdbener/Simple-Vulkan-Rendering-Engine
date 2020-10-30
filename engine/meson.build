@@ -1,10 +1,11 @@
 engine_sources = [
   'vulkan/common.cpp',
   'vulkan/shader.cpp',
-  'vulkan/renderState.cpp',
+  'vulkan/state.cpp',
   'common.cpp',
   'window.cpp',
   'monitor.cpp',
+  'resource/mesh.cpp',
 
 ]
 
