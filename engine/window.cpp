@@ -60,8 +60,8 @@ Window::Window(vpp::Instance& instance, int width, int height, str _name, Device
     surface = vpp::Surface(instance, (vk::SurfaceKHR) surf);
 
     // Create the swapchain which will feed images to the surface
-    if(deviceInfo.valid == RenderState::DeviceCreateInfo::NO) deviceInfo.valid = RenderState::DeviceCreateInfo::NO_INITAL;
-    RenderState::recreateSwapchain(deviceInfo);
+    if(deviceInfo.valid == GraphicsState::DeviceCreateInfo::NO) deviceInfo.valid = GraphicsState::DeviceCreateInfo::NO_INITAL;
+    GraphicsState::recreateSwapchain(deviceInfo);
 
     // Create a command pool for this window, from the queue with support for both graphics and transfer
 
@@ -74,10 +74,10 @@ Window::Window(vpp::Instance& instance, int width, int height, str _name, Device
     }
 
     // Create a renderpass for the window with a single color attachment which will be drawn to the surface
-    RenderState::createGraphicsRenderPass({vk::ImageLayout::colorAttachmentOptimal});
+    GraphicsState::createGraphicsRenderPass({vk::ImageLayout::colorAttachmentOptimal});
 
     // Create the objects we need to render each frame
-    RenderState::recreateRenderBuffers();
+    GraphicsState::recreateRenderBuffers();
 
     // Give the window a reference to this class, so that callbacks can use it.
     glfwSetWindowUserPointer(window, this);
@@ -225,7 +225,7 @@ void Window::recreateSwapchain(){
     auto [width, height] = getFrameSize();
     newSize.width = width; newSize.height = height;
 
-    RenderState::recreateSwapchain({}, newSize);
+    GraphicsState::recreateSwapchain({}, newSize);
 }
 
 // Returns true if the window has been destroyed

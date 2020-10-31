@@ -21,7 +21,7 @@ public:
 	SPIRVShaderModule(const vpp::Device& dev, nytl::Span<const uint32_t> bytes);
     SPIRVShaderModule(const vpp::Device& dev, std::istream& sourceFile);
 
-    vpp::ShaderProgram::StageInfo createStageInfo(vk::ShaderStageBits stage, str entryPoint = u8"main") const {
+    vpp::ShaderProgram::StageInfo createStageInfo(vk::ShaderStageBits stage, const str& entryPoint = u8"main") const {
         return {vkHandle(), stage, nullptr, entryPoint, {}};
     }
 
@@ -35,12 +35,18 @@ public:
 };
 
 class GLSLShaderModule: public SPIRVShaderModule {
+private:
+    vk::ShaderStageBits stage;
+    str entryPoint;
+
 public:
     using SPIRVShaderModule::SPIRVShaderModule;
 
-    GLSLShaderModule(const vpp::Device& dev, str sourceCode, vk::ShaderStageBits stage, str entryPoint = "main");
-    GLSLShaderModule(const vpp::Device& dev, std::istream& sourceFile, vk::ShaderStageBits stage, str entryPoint = "main");
+    GLSLShaderModule(const vpp::Device& dev, str sourceCode, vk::ShaderStageBits _stage, str entryPoint = u8"main");
+    GLSLShaderModule(const vpp::Device& dev, std::istream& sourceFile, vk::ShaderStageBits _stage, str entryPoint = u8"main");
+
+    vpp::ShaderProgram::StageInfo createStageInfo() const { return SPIRVShaderModule::createStageInfo(stage, entryPoint); }
 
 protected:
-    void compileShaderModule(const vpp::Device& device, str sourceCode, vk::ShaderStageBits stage, str entryPoint = "main");
+    void compileShaderModule(const vpp::Device& device, str sourceCode, str entryPoint = "main");
 };

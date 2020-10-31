@@ -19,7 +19,7 @@ protected:
     WindowNotFound(std::runtime_error&& o) : std::runtime_error(o) {}
 };
 
-class Window: public RenderState {
+class Window: public GraphicsState {
 private:
     // Tracks if GLFW has been initialized
     static bool glfwInitalized;
@@ -46,7 +46,7 @@ protected:
 
 public:
     /// Creates a new window with an attached vulkan rendering surface
-    Window(vpp::Instance&, int width = 800, int height = 600, str name = "Project Delta", RenderState::DeviceCreateInfo deviceInfo = {}, std::vector<std::pair<int, int>> windowCreationHints = {});
+    Window(vpp::Instance&, int width = 800, int height = 600, str name = "Project Delta", GraphicsState::DeviceCreateInfo deviceInfo = {}, std::vector<std::pair<int, int>> windowCreationHints = {});
     ~Window();
 
     // TODO: Window icon
@@ -91,7 +91,7 @@ public:
 
     void recreateSwapchain();
     // Override to the main loop function which abandons the loop if the window has already been closed or minimized
-    virtual bool mainLoop(uint64_t frame) { if(!window || pauseLoop) return false; return RenderState::mainLoop(frame); }
+    virtual bool mainLoop(uint64_t frame) { if(!window || pauseLoop) return false; return GraphicsState::mainLoop(frame); }
 
     /// Returns true if the window has been destroyed
     bool isDestroyed() const;

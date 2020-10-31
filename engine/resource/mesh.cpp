@@ -2,12 +2,14 @@
 #define __MESH_CPP__
 #include "mesh.hpp"
 
+#include "material.hpp"
+
 template <typename indexType, typename bit>
-Mesh<indexType, bit>::Mesh(RenderState& _state)
+Mesh<indexType, bit>::Mesh(GraphicsState& _state)
   : state(_state) {}
 
 template <typename indexType, typename bit>
-Mesh<indexType, bit>::Mesh(RenderState& _state, std::vector<Vertex>& vertecies, std::vector<indexType>& indecies)
+Mesh<indexType, bit>::Mesh(GraphicsState& _state, std::vector<Vertex>& vertecies, std::vector<indexType>& indecies)
   : state(_state), indexCount(indecies.size()) {
     // Create the buffers
     vpp::BufferAllocator& ba = state.device().bufferAllocator();
@@ -26,15 +28,9 @@ Mesh<indexType, bit>::Mesh(RenderState& _state, std::vector<Vertex>& vertecies, 
 
 template <typename indexType, typename bit>
 void Mesh<indexType, bit>::rerecordCommandBuffer(vpp::CommandBuffer& renderCommandBuffer) const {
-    // // Begin recording the command buffer (possibly overwriting it)
-    // vk::CommandBufferInheritanceInfo inheritanceInfo(state.renderPass, /*subPass*/ 0, VK_NULL_HANDLE, /*enableQueries*/ VK_FALSE);
-    // vk::beginCommandBuffer(renderCommandBuffer, {vk::CommandBufferUsageBits::simultaneousUse, &inheritanceInfo});
-    // // End recording the command buffer at the end of the function
-    // defer(vk::endCommandBuffer(renderCommandBuffer);, ecb);
-
     // Bind the pipeline
-    if(!pipeline) throw vk::VulkanError(vk::Result::errorInitializationFailed, "Can't record command buffer if no pipeline has been provided.");
-    vk::cmdBindPipeline(renderCommandBuffer, vk::PipelineBindPoint::graphics, *pipeline);
+    if(!material) throw vk::VulkanError(vk::Result::errorInitializationFailed, "Can't record command buffer if no Material has been provided.");
+    vk::cmdBindPipeline(renderCommandBuffer, vk::PipelineBindPoint::graphics, material->getPipeline());
     // Bind the vertex buffer
     vk::cmdBindVertexBuffers(renderCommandBuffer, /*firstBinding*/ 0, 1, vertexBuffer.buffer(), vertexBuffer.offset());
     // Bind the index buffer

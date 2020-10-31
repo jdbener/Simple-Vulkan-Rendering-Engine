@@ -2,6 +2,7 @@
 
 #include "engine/window.hpp"
 #include "engine/resource/mesh.hpp"
+#include "engine/resource/material.hpp"
 
 #include "engine/vulkan/shader.hpp"
 
@@ -56,75 +57,47 @@ int main(){
     Window w(instance, 800, 600);
     w.setName(str(w.getName()) + " (" + str(w.id()) + ")");
 
-    std::ifstream vertexSource("../test.vert.glsl");
-    GLSLShaderModule vertex(w.device(), vertexSource, vk::ShaderStageBits::vertex);
-    std::ifstream fragmentSource("../test.frag.glsl");
-    GLSLShaderModule fragment(w.device(), fragmentSource, vk::ShaderStageBits::fragment);
-
-
-    auto pipelineInfo = w.createGraphicsPipelineInfo({ std::vector<vpp::ShaderProgram::StageInfo>{vertex.createStageInfo(vk::ShaderStageBits::vertex, u8"main"),
-        fragment.createStageInfo(vk::ShaderStageBits::fragment, u8"main")} });
-
-    // Describe how verticies are laid out
-    {
-        auto binding = MeshData::Vertex::getBindingDescription();
-        auto attributes = MeshData::Vertex::getAttributeDescriptions();
-        // NOTE: When messing with the members of this struct, don't overwrite the whole struct,
-        //  instead modify the individual elements which need tweaking
-        pipelineInfo.vertex.vertexBindingDescriptionCount = 1;
-        pipelineInfo.vertex.pVertexBindingDescriptions = &binding;
-        pipelineInfo.vertex.vertexAttributeDescriptionCount = attributes.size();
-        pipelineInfo.vertex.pVertexAttributeDescriptions = attributes.data();
-    }
-
-    // std::vector<Vertex> vertecies {
-    //     {{0.0, -0.5}, {1.0, 0.0, 0.0}},
-    //     {{0.5, 0.5}, {0.0, 1.0, 0.0}},
-    //     {{-0.5, 0.5}, {0.0, 0, 1.0}}
-    // };
     std::vector<MeshData::Vertex> vertecies {
         {{0.0, -0.5}, {1.0, 0.0, 0.0}},
         {{0.5, 0.5}, {0.0, 1.0, 0.0}},
         {{-0.5, 0.5}, {0.0, 0, 1.0}}
     };
-    // // TODO: Does setting the MemoryPropertyBits here do what I think it does?
-    // vpp::SubBuffer vertBuff(w.device().bufferAllocator(), sizeof(vertecies[0]) * vertecies.size(), vk::BufferUsageBits::vertexBuffer | vk::BufferUsageBits::transferDst, (unsigned int) vk::MemoryPropertyBits::deviceLocal);
-    //
     std::vector<uint16_t> indecies {
         0, 1, 2
     };
-    // vpp::SubBuffer indexBuff(w.device().bufferAllocator(), sizeof(indecies[0]) * indecies.size(), vk::BufferUsageBits::indexBuffer | vk::BufferUsageBits::transferDst, (unsigned int) vk::MemoryPropertyBits::deviceLocal);
-    //
-    // {
-    //     // Create two buffers which will be cleaned up once the data has been copied
-    //     vpp::CommandBuffer vertCB = w.commandPool.allocate(), indexCB = w.commandPool.allocate();
-    //
-    //     // Copy the vertecies into the vertex buffer
-    //     uint32_t vid = w.fillStaging(vertBuff, vertecies, /*wait*/ false, vertCB);
-    //     // Copy the indecies into the index buffer
-    //     uint32_t iid = w.fillStaging(indexBuff, indecies, /*wait*/ false);
-    //
-    //     std::cout << vid << " - " << iid << std::endl;
-    //
-    //     // Wait for the vertex and index buffers to both have their data coppied
-    //     w.device().queueSubmitter().wait(vid);
-    //     w.device().queueSubmitter().wait(iid);
-    // }
-
     Mesh triangle(w, vertecies, indecies);
 
+    GraphicsMaterial triangleMat(w);
+    {
+        // Load the shaders for the material
+        std::ifstream vertexSource("../test.vert.glsl");
+        GLSLShaderModule vertex(w.device(), vertexSource, vk::ShaderStageBits::vertex);
+        std::ifstream fragmentSource("../test.frag.glsl");
+        GLSLShaderModule fragment(w.device(), fragmentSource, vk::ShaderStageBits::fragment);
 
-    // I think this step needs to be explicit
-    w.bindPipeline(pipelineInfo);
+        // Create the setup structure for the material
+        // NOTE: When messing with the members of this struct, don't overwrite the whole struct,
+        //  instead modify the individual elements which need tweaking
+        GraphicsMaterial::CreateInfo matInfo = triangleMat.begin({ std::vector<vpp::ShaderProgram::StageInfo>{
+            vertex.createStageInfo(),
+            fragment.createStageInfo()
+        } });
 
-    triangle.bindPipeline(w.pipeline);
+        // Describe how vertecies are laid out
+        auto binding = MeshData::Vertex::getBindingDescription();
+        auto attributes = MeshData::Vertex::getAttributeDescriptions();
+        matInfo.vertex.vertexBindingDescriptionCount = 1;
+        matInfo.vertex.pVertexBindingDescriptions = &binding;
+        matInfo.vertex.vertexAttributeDescriptionCount = attributes.size();
+        matInfo.vertex.pVertexAttributeDescriptions = attributes.data();
+
+        // Finalize the material and create all of the internal vulkan objects
+        triangleMat.finalize(matInfo);
+    }
+
+    triangle.bindMaterial(triangleMat);
 
     w.bindCustomCommandRecordingSteps([&](vpp::CommandBuffer& buffer){
-        // Bind the vertex buffer
-        // vk::cmdBindVertexBuffers(buffer, 0, std::vector<vk::Buffer>{vertBuff.buffer()}, std::vector<vk::DeviceSize>{vertBuff.offset()});
-        // vk::cmdBindIndexBuffer(buffer, indexBuff.buffer(), indexBuff.offset(), vk::IndexType::uint16);
-        //
-        // vk::cmdDrawIndexed(buffer, indecies.size(), /*instances*/ 1, /*firstIndex*/ 0, /*vertexOffset*/ 0, /*firstInstance*/ 0);
         triangle.rerecordCommandBuffer(buffer);
     });
     w.rerecordCommandBuffers();

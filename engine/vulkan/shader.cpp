@@ -103,21 +103,23 @@ void SPIRVShaderModule::saveHeader(str fileName) const {
 
 // Compiles the specified GLSL into a SPIR-V based shader module
 ///     Saves the resulting binary array if the debugging mode is turned on
-GLSLShaderModule::GLSLShaderModule(const vpp::Device& dev, str sourceCode, vk::ShaderStageBits stage, str entryPoint){
-    compileShaderModule(dev, sourceCode, stage, entryPoint);
+GLSLShaderModule::GLSLShaderModule(const vpp::Device& dev, str sourceCode, vk::ShaderStageBits _stage, str _entryPoint)
+  : stage(_stage), entryPoint(_entryPoint) {
+    compileShaderModule(dev, sourceCode, entryPoint);
 }
 
 // Constructs a shader module from the GLSL code stored in the provided filestream
 ///     Saves the resulting binary array if the debugging mode is turned on
-GLSLShaderModule::GLSLShaderModule(const vpp::Device& dev, std::istream& sourceFile, vk::ShaderStageBits stage, str entryPoint){
+GLSLShaderModule::GLSLShaderModule(const vpp::Device& dev, std::istream& sourceFile, vk::ShaderStageBits _stage, str _entryPoint)
+  : stage(_stage), entryPoint(_entryPoint) {
     str sourceCode = str::stream(sourceFile);
-    compileShaderModule(dev, sourceCode, stage, entryPoint);
+    compileShaderModule(dev, sourceCode, entryPoint);
 }
 
 // Compiles the provided GLSL source code into a SPIR-V based vulkan shader module
 //  Saves the resulting binary array if the debugging mode is turned on
 //  NOTE: Slightly modified from: https://forestsharp.com/glslang-cpp/
-void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str sourceCode, vk::ShaderStageBits _stage, str entryPoint){
+void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str sourceCode, str entryPoint){
     dlg_warn("Be sure to compile this shader to a SPIR-V binary before release! (This function should not be used in release builds!)");
 
     // TODO: Look at what all is in this monolithic beast
@@ -220,7 +222,7 @@ void GLSLShaderModule::compileShaderModule(const vpp::Device& device, str source
 
     // Convert the shader stage from a vulkan stage to a glslang stage
     EShLanguage stage;
-    switch(_stage){
+    switch(this->stage){
     case vk::ShaderStageBits::vertex: stage = EShLangVertex; break;
     case vk::ShaderStageBits::tessellationControl: stage = EShLangTessControl; break;
     case vk::ShaderStageBits::tessellationEvaluation: stage = EShLangTessEvaluation; break;

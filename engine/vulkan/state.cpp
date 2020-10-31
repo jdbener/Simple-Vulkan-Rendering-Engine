@@ -4,14 +4,6 @@
 // Initialize the id list
 uint16_t VulkanState::nextID = 0;
 
-/// Bind an already existing custom pipeline
-void VulkanState::bindPipeline(vpp::Pipeline&& _pipeline) {
-    pipeline = std::move(_pipeline);
-
-    // Once the pipeline is bound, re-record the command buffers
-    rerecordCommandBuffers();
-}
-
 /// Set any custom steps which need to be recorded to the internal command buffer
 ///     The provided function will always be called right before the draw/compute call
 ///     Command buffers must be rerecorded when this is changed
@@ -23,7 +15,7 @@ void VulkanState::bindCustomCommandRecordingSteps(std::function<void (vpp::Comma
 /// Gets the width and height of the swapchain.
 ///     Requires <surface> already be set
 ///     If pd is omitted uses the one bound to the <swapchain>
-vk::Extent2D RenderState::swapchainExtent(vk::PhysicalDevice pd, bool ignoreCache){
+vk::Extent2D GraphicsState::swapchainExtent(vk::PhysicalDevice pd, bool ignoreCache){
     // Caching
     static std::unordered_map<vk::SurfaceKHR, vk::Extent2D> cache;
     if(!ignoreCache && cache.find(surface) != cache.end()) return cache[surface];
@@ -48,7 +40,7 @@ vk::Extent2D RenderState::swapchainExtent(vk::PhysicalDevice pd, bool ignoreCach
 /// Gets the image format of the swapchain.
 ///     Requires <surface> already be set
 ///     If pd is omitted uses the one bound to the <swapchain>
-vk::SurfaceFormatKHR RenderState::swapchainFormat(vk::PhysicalDevice pd, bool ignoreCache){
+vk::SurfaceFormatKHR GraphicsState::swapchainFormat(vk::PhysicalDevice pd, bool ignoreCache){
     // Caching
     static std::unordered_map<vk::SurfaceKHR, vk::SurfaceFormatKHR> cache;
     if(!ignoreCache && cache.find(surface) != cache.end()) return cache[surface];
@@ -74,7 +66,7 @@ vk::SurfaceFormatKHR RenderState::swapchainFormat(vk::PhysicalDevice pd, bool ig
 /// Gets the presentation mode of the swapchain.
 ///     Requires <surface> already be set.
 ///     If pd is omitted uses the one bound to the <swapchain>
-vk::PresentModeKHR RenderState::swapchainPresentMode(vk::PhysicalDevice pd, bool ignoreCache){
+vk::PresentModeKHR GraphicsState::swapchainPresentMode(vk::PhysicalDevice pd, bool ignoreCache){
     // Caching
     static std::unordered_map<vk::SurfaceKHR, vk::PresentModeKHR> cache;
     if(!ignoreCache && cache.find(surface) != cache.end()) return cache[surface];
@@ -101,7 +93,7 @@ vk::PresentModeKHR RenderState::swapchainPresentMode(vk::PhysicalDevice pd, bool
 /// Gets the number of images which can be rendered at once.
 ///     Requires <surface> already be set
 ///     If pd is omitted uses the one bound to the <swapchain>
-uint32_t RenderState::swapchainImageCount(vk::PhysicalDevice pd, bool ignoreCache){
+uint32_t GraphicsState::swapchainImageCount(vk::PhysicalDevice pd, bool ignoreCache){
     // Caching
     static std::unordered_map<vk::SurfaceKHR, uint32_t> cache;
     if(!ignoreCache && cache.find(surface) != cache.end()) return cache[surface];
@@ -121,21 +113,9 @@ uint32_t RenderState::swapchainImageCount(vk::PhysicalDevice pd, bool ignoreCach
     return imageCount;
 }
 
-/// Creates the pipeline create info for this state which can then be modified and bound
-vpp::GraphicsPipelineInfo RenderState::createGraphicsPipelineInfo(vpp::ShaderProgram&& program, nytl::Span<const vk::DescriptorSetLayout> layouts, nytl::Span<const vk::PushConstantRange> ranges) {
-    vk::PipelineLayout layout = vpp::PipelineLayout(device(), layouts, ranges).release();
-    return {renderPass, layout, std::move(program)};
-}
-
-/// Bind a graphics pipeline based on the provided pipeline info
-void RenderState::bindPipeline(vpp::GraphicsPipelineInfo& createInfo) {
-    VulkanState::bindPipeline({device(), createInfo.info()});
-    vk::destroyPipelineLayout(device(), createInfo.info().layout);
-}
-
 // Utility function used by recreate swapchain to pick the properties of the swapchain
 //  NOTE: Referenced from https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain
-vk::SwapchainCreateInfoKHR RenderState::swapchainProperties(const vk::PhysicalDevice pd, const vk::SurfaceKHR surface, vk::SwapchainKHR oldSwapchain){
+vk::SwapchainCreateInfoKHR GraphicsState::swapchainProperties(const vk::PhysicalDevice pd, const vk::SurfaceKHR surface, vk::SwapchainKHR oldSwapchain){
     vk::SurfaceFormatKHR chosenFormat = swapchainFormat(pd, true);
 
     return {/* flags */ {},
@@ -161,7 +141,7 @@ vk::SwapchainCreateInfoKHR RenderState::swapchainProperties(const vk::PhysicalDe
 //  If a special version of deviceInfo passed in from the constructor is found, it will let vpp pick a physical device
 //  If neither of these is the case, it will resize the swapchain to be the same size as the GLFW framebuffer
 //  Automatically recreates the render buffers when the swapchain is resized
-void RenderState::recreateSwapchain(DeviceCreateInfo deviceInfo, vk::Extent2D newSize){
+void GraphicsState::recreateSwapchain(DeviceCreateInfo deviceInfo, vk::Extent2D newSize){
     // We are given a new valid physical device from which we need to create a new Device
     if(deviceInfo.valid == DeviceCreateInfo::YES){
         dlg_info("State " + str(id()) + ": Creating swapchain from specified device");
@@ -187,7 +167,7 @@ void RenderState::recreateSwapchain(DeviceCreateInfo deviceInfo, vk::Extent2D ne
 }
 
 /// Helper to create a simple graphics focused renderpass
-void RenderState::createGraphicsRenderPass(std::vector<vk::ImageLayout> _colorAttachments, std::vector<vk::ImageLayout> _inputAttachments){
+void GraphicsState::createGraphicsRenderPass(std::vector<vk::ImageLayout> _colorAttachments, std::vector<vk::ImageLayout> _inputAttachments){
     vk::AttachmentDescription attachment {/*flags*/ {}, swapchainFormat().format, vk::SampleCountBits::e1, vk::AttachmentLoadOp::clear, vk::AttachmentStoreOp::store, vk::AttachmentLoadOp::dontCare, vk::AttachmentStoreOp::dontCare,
         // Don't care what the pass looks like when we start, create a final pass suitable for screen presentation
         vk::ImageLayout::undefined, vk::ImageLayout::presentSrcKHR};
@@ -214,7 +194,7 @@ void RenderState::createGraphicsRenderPass(std::vector<vk::ImageLayout> _colorAt
 }
 
 /// Function which sets up all of the data stored in the <renderBuffers>
-void RenderState::recreateRenderBuffers(){
+void GraphicsState::recreateRenderBuffers(){
     // Wait for everything currently queued to finish rendering
     device().waitIdle();
     // Invalidate the recordings in our command pool
@@ -255,7 +235,7 @@ void RenderState::recreateRenderBuffers(){
 
 /// Function which records the command buffers
 ///     Is automatically called after a pipeline is bound
-bool RenderState::rerecordCommandBuffers(){
+bool GraphicsState::rerecordCommandBuffers(){
     // Calculate the size and viewport
     vk::Extent2D extent = swapchainExtent();
     vk::Viewport viewport{0, 0, (float) extent.width, (float) extent.height, 0, 1};
@@ -271,7 +251,6 @@ bool RenderState::rerecordCommandBuffers(){
             {renderPass, buffer.framebuffer, {/*offset*/{0, 0}, extent}, 1, &clearValue}, vk::SubpassContents::eInline);
         defer(vk::cmdEndRenderPass(buffer.commandBuffer);, re) // End the render pass at end of loop
 
-        vk::cmdBindPipeline(buffer.commandBuffer, vk::PipelineBindPoint::graphics, pipeline);
         vk::cmdSetViewport(buffer.commandBuffer, 0, 1, viewport);
         vk::cmdSetScissor(buffer.commandBuffer, 0, 1, scissor);
 
@@ -288,7 +267,7 @@ bool RenderState::rerecordCommandBuffers(){
 /// Function to be called by the main loop every frame
 ///     Implementation needs to handle the case where this object is no longer valid
 ///     Automatically resizes the swapchain when it becomes outdated (ex window resized)
-bool RenderState::mainLoop(uint64_t frame){
+bool GraphicsState::mainLoop(uint64_t frame){
     try{
         // Get the next image in the render queue
         uint32_t i = vk::acquireNextImageKHR(device().vkHandle(), swapchain.vkHandle(), /*timeout*/ UINT64_MAX, renderBuffers[frame % renderBuffers.size()].acquired.vkHandle(), {});

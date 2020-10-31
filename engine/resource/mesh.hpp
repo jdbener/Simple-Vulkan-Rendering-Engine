@@ -1,16 +1,13 @@
 #pragma once
 
 #include "engine/vulkan/state.hpp"
-#include "engine/util/math.hpp"
+#include "engine/math/math.hpp"
 
-// TODO: resource type class this inherits from?
-template <typename indexType = uint16_t, typename boneIndexType = uint8_t> // Mesh<uint16_t> and Mesh<uint32_t>
-class Mesh {
-public:
+class Material;
+
+namespace MeshData {
     struct Vertex {
-        glm::vec3 position;
-        glm::vec3 normal;
-        // glm::vec3 tangent;
+        glm::vec3 position, normal, tangent;
         glm::vec2 uv;
 
         // TODO: remove
@@ -23,23 +20,23 @@ public:
             return {binding, sizeof(Vertex), vk::VertexInputRate::vertex};
         }
 
-        static std::array<vk::VertexInputAttributeDescription, 4> getAttributeDescriptions(const uint32_t binding = 0){
-            std::array<vk::VertexInputAttributeDescription, 4> out;
+        static std::array<vk::VertexInputAttributeDescription, 5> getAttributeDescriptions(const uint32_t binding = 0){
+            std::array<vk::VertexInputAttributeDescription, 5> out;
 
             out[0] = {/*location*/ 0, binding, vk::Format::r32g32b32Sfloat, offsetof(Vertex, position)};
             out[1] = {/*location*/ 1, binding, vk::Format::r32g32b32Sfloat, offsetof(Vertex, normal)};
-            // out[1] = {/*location*/ 1, binding, vk::Format::r32g32b32Sfloat, offsetof(Vertex, tangent)};
-            out[2] = {/*location*/ 2, binding, vk::Format::r32g32Sfloat, offsetof(Vertex, uv)};
-            out[3] = {/*location*/ 3, binding, vk::Format::r32g32b32Sfloat, offsetof(Vertex, color)};
+            out[2] = {/*location*/ 2, binding, vk::Format::r32g32b32Sfloat, offsetof(Vertex, tangent)};
+            out[3] = {/*location*/ 3, binding, vk::Format::r32g32Sfloat, offsetof(Vertex, uv)};
+            out[4] = {/*location*/ 4, binding, vk::Format::r32g32b32Sfloat, offsetof(Vertex, color)};
 
             return out;
         }
     };
 
-protected:
     // TODO: Implement mechanisms for sending this binding this data
     // Struct representing the ubo which will be sent to the shader
-    struct ExtraData {
+    template <typename boneIndexType = uint8_t>
+    struct SecondaryData {
         // Variable storing how many bones at max each vertex can reference
         uint8_t boneSpan;
 
@@ -50,14 +47,21 @@ protected:
         std::vector<boneIndexType> boneIndecies = {};
         std::vector<float> boneWeights = {};
     };
+}
+
+// TODO: resource type class this inherits from?
+template <typename indexType = uint16_t, typename boneIndexType = uint8_t> // Mesh<uint16_t> and Mesh<uint32_t>
+class Mesh {
+using Vertex = MeshData::Vertex;
+using SecondaryData = MeshData::SecondaryData<boneIndexType>;
 
 protected:
     // Reference to a vulkan state to pull command buffers from
-    RenderState& state;
+    GraphicsState& state;
 
     // Pipeline for the material of this object
     // TODO: replace with matetial system
-    vpp::Pipeline* pipeline = nullptr;
+    Material* material = nullptr;
     // Core Buffers
     vpp::SubBuffer vertexBuffer, indexBuffer;
     // Number of indecies in the index buffer
@@ -66,20 +70,29 @@ protected:
 
 public:
     Mesh() = default;
-    Mesh(RenderState&);
-    Mesh(RenderState&, std::vector<Vertex>&, std::vector<indexType>&);
+    Mesh(GraphicsState&);
+    Mesh(GraphicsState&, std::vector<Vertex>&, std::vector<indexType>&);
     virtual ~Mesh() {}
 
     void rerecordCommandBuffer(vpp::CommandBuffer& renderCommandBuffer) const;
 
     //TODO:: replace the single material with instance data
-    Mesh& bindPipeline(vpp::Pipeline& pipe) { pipeline = &pipe; return *this;}
+    Mesh& bindMaterial(Material& mat) { material = &mat; return *this;}
     //Mesh& bindVertexColors();
 };
 
-typedef Mesh<uint16_t, uint8_t> MeshData;
 
-#include "mesh.cpp"
+
+
+
+
+
+
+
+
+
+
+
 
 // Mesh which saves all of the provided buffers for future use
 // template <typename indexType = uint16_t, typename boneIndexType = uint8_t> // Mesh<uint16_t> and Mesh<uint32_t>
@@ -121,3 +134,5 @@ typedef Mesh<uint16_t, uint8_t> MeshData;
 // protected:
 //     void clearSecondaryBuffers();
 // };
+
+#include "mesh.cpp"
