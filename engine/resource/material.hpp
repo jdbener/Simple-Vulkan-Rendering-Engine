@@ -15,6 +15,13 @@ public:
 
     const vpp::Pipeline& getPipeline() const { return pipeline; }
     //vpp::Pipeline& getPipeline() { return pipeline; }
+
+    // TODO: Needs to be exposed?
+    const vpp::PipelineLayout& getLayout() const { return layout; }
+
+    /// Determine if the material's pipeline has been created and is valid
+    bool valid() const { return pipeline.vkHandle(); }
+    operator bool() const { return valid(); }
 };
 
 /// Override of material with utilities built in for creating a Graphics pipeline

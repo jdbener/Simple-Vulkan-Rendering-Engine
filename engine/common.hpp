@@ -6,6 +6,7 @@
 #include <iostream>         // cout
 #include <iomanip>
 #include <exception>
+#include <variant>
 
 #include <dlg/dlg.hpp>      // logger
 #include <nytl/scope.hpp>   // Scopeguard
@@ -26,7 +27,7 @@ std::vector<T> operator+(std::vector<T> a, std::vector<T> b){
     return a;
 }
 
-// Enable writing vectors out to ostreams
+// Enable writing std::vectors out to ostreams
 template <typename T>
 std::ostream& operator<<(std::ostream& s, std::vector<T> out){
     s << "[";
@@ -37,6 +38,13 @@ std::ostream& operator<<(std::ostream& s, std::vector<T> out){
     return s << "]";
 }
 
+// Enable writing std::variants out to ostreams
+// https://stackoverflow.com/questions/47168477/how-to-stream-stdvariant
+template <typename T0, typename ... Ts>
+std::ostream & operator<< (std::ostream & s, std::variant<T0, Ts...> const & v)
+    { std::visit([&](auto && arg){ s << arg;}, v); return s; }
+
+/// Converts the provided stream into a byte array
 std::vector<std::byte> readStream(std::istream& f, size_t start = 0, long len = -1);
 
 

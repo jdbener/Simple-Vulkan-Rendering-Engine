@@ -7,7 +7,7 @@ uint16_t VulkanState::nextID = 0;
 /// Set any custom steps which need to be recorded to the internal command buffer
 ///     The provided function will always be called right before the draw/compute call
 ///     Command buffers must be rerecorded when this is changed
-void VulkanState::bindCustomCommandRecordingSteps(std::function<void (vpp::CommandBuffer&)> _new) {
+void VulkanState::bindCustomCommandRecordingSteps(std::function<void (vpp::CommandBuffer&, uint8_t)> _new) {
     customCommandRecordingSteps = _new;
 };
 
@@ -243,30 +243,30 @@ bool GraphicsState::rerecordCommandBuffers(){
     // Specify the blank render color
     vk::ClearValue clearValue = {0, 0, 0, 1}; // full opacity black
 
-    for(RenderBuffer& buffer: renderBuffers){
-        vk::beginCommandBuffer(buffer.commandBuffer, {});
-        defer(vk::endCommandBuffer(buffer.commandBuffer);, be) // Stop recording at end of loop
+    repeat(renderBuffers.size(), i){
+        vk::beginCommandBuffer(renderBuffers[i].commandBuffer, {});
+        defer(vk::endCommandBuffer(renderBuffers[i].commandBuffer);, be) // Stop recording at end of loop
 
-        vk::cmdBeginRenderPass(buffer.commandBuffer,
-            {renderPass, buffer.framebuffer, {/*offset*/{0, 0}, extent}, 1, &clearValue}, vk::SubpassContents::eInline);
-        defer(vk::cmdEndRenderPass(buffer.commandBuffer);, re) // End the render pass at end of loop
+        vk::cmdBeginRenderPass(renderBuffers[i].commandBuffer,
+            {renderPass, renderBuffers[i].framebuffer, {/*offset*/{0, 0}, extent}, 1, &clearValue}, vk::SubpassContents::eInline);
+        defer(vk::cmdEndRenderPass(renderBuffers[i].commandBuffer);, re) // End the render pass at end of loop
 
-        vk::cmdSetViewport(buffer.commandBuffer, 0, 1, viewport);
-        vk::cmdSetScissor(buffer.commandBuffer, 0, 1, scissor);
+        vk::cmdSetViewport(renderBuffers[i].commandBuffer, 0, 1, viewport);
+        vk::cmdSetScissor(renderBuffers[i].commandBuffer, 0, 1, scissor);
 
         // Any custom bindings (like vertex buffers)
-        if(customCommandRecordingSteps) customCommandRecordingSteps(buffer.commandBuffer);
+        if(customCommandRecordingSteps) customCommandRecordingSteps(renderBuffers[i].commandBuffer, i);
 
-        //vk::cmdDraw(buffer.commandBuffer, /*vertCount*/ 3, /*instanceCount*/ 1, /*firstVertex*/ 0, /*firstInstance*/ 0);
+        //vk::cmdDraw(renderBuffers[i].commandBuffer, /*vertCount*/ 3, /*instanceCount*/ 1, /*firstVertex*/ 0, /*firstInstance*/ 0);
     }
 
     // If we made it this far nothing went wrong
     return true;
 }
 
-/// Function to be called by the main loop every frame
-///     Implementation needs to handle the case where this object is no longer valid
-///     Automatically resizes the swapchain when it becomes outdated (ex window resized)
+/// Function to be called by the main loop every frame.
+///     Implementation needs to handle the case where this object is no longer valid.
+///     Automatically resizes the swapchain when it becomes outdated (ex window resized).
 bool GraphicsState::mainLoop(uint64_t frame){
     try{
         // Get the next image in the render queue
@@ -274,6 +274,8 @@ bool GraphicsState::mainLoop(uint64_t frame){
 
         // Wait for any previous rendering tasks on this image to finish
         device().waitForFence(renderBuffers[i].fence.vkHandle());
+
+        if(customMainLoopSteps) customMainLoopSteps(*this, i);
 
         // Render the image
         vk::PipelineStageFlags waitStage = vk::PipelineStageBits::colorAttachmentOutput;

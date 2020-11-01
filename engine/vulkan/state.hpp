@@ -32,7 +32,8 @@ protected:
     // Used to store the memory of the vulkan logical device we create for this window
     std::unique_ptr<VulkDevice> _device = nullptr;
     // Function pointer which stores a reference to extra command buffer recording steps
-    std::function<void (vpp::CommandBuffer&)> customCommandRecordingSteps = {};
+    std::function<void (vpp::CommandBuffer&, uint8_t)> customCommandRecordingSteps = {};
+    std::function<void (VulkanState&, uint32_t)> customMainLoopSteps = {};
 
 public:
     vpp::CommandPool commandPool;
@@ -50,7 +51,9 @@ public:
     /// Set any custom steps which need to be recorded to the internal command buffer
     ///     The provided function will always be called right before the draw/compute call
     ///     Command buffers must be rerecorded when this is changed
-    void bindCustomCommandRecordingSteps(std::function<void (vpp::CommandBuffer&)> _new);
+    void bindCustomCommandRecordingSteps(std::function<void (vpp::CommandBuffer&, uint8_t)> _new);
+
+    void bindCustomMainLoopSteps(std::function<void (VulkanState&, uint32_t)> _new) {customMainLoopSteps = _new;}
 
     /// Function which records to the buffers.
     ///     Is automatically called after a pipeline is bound
