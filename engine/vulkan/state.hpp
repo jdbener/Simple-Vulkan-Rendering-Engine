@@ -63,11 +63,11 @@ public:
     virtual bool mainLoop(uint64_t frame) = 0;
 
 
-    /// Copies the provided data into the given buffer through a stagging buffer.
+    /// Copies the provided data into the given buffer through a staging buffer.
     ///     Submits the operation on the device attached to the provided state.
     ///     The input buffer must be marked as a vk::BufferUsageBits::transferDst.
-    ///     If flagged to wait for the opperation to finish, it will do so; otherwise
-    ///         it will return the submition ID for future syncronization.
+    ///     If flagged to wait for the operation to finish, it will do so; otherwise
+    ///         it will return the submission ID for future synchronization.
     ///     If a command buffer is provided, that buffer will be overwritten and used;
     ///         otherwise a new buffer will be allocated and then destroyed.
     ///     The provided command buffer will never be destroyed.
@@ -94,7 +94,7 @@ public:
         vpp::SubBuffer stagingBuff = vpp::fillStaging(internalCB, buffer, nytl::span<std::byte>{(std::byte*) data.data(), data.size() * sizeof(data[0])});
         vk::endCommandBuffer(internalCB);
 
-        // Add the buffer to the submittion queue...
+        // Add the buffer to the submission queue...
         vpp::QueueSubmitter& submitter = device().queueSubmitter();
         uint64_t out = submitter.add(internalCB);
         // And submit it then wait for it to finish...
@@ -129,7 +129,7 @@ public:
     std::vector<RenderBuffer> renderBuffers;
 
 protected:
-    /// Creates a swapchain create info from the specified surface.
+    /// Creates a swapchain CreateInfo from the specified surface.
     ///     Requires <surface> already be set
     vk::SwapchainCreateInfoKHR swapchainProperties(const vk::PhysicalDevice pd, const vk::SurfaceKHR surface, vk::SwapchainKHR oldSwapchain = {});
 

@@ -60,21 +60,26 @@ public:
     /// Gets the size of our framebuffer (the size of the image we need to create).
     ///   The returned result is measure in pixels
     std::pair<int, int> getFrameSize() const;
+    /// Gets the position on the monitor of the window
+    std::pair<int, int> getPosition() const;
     /// Changes the name of the window
     void setName(str&);
     void setName(str&& s) { setName(s); }
     /// Returns the current name of the window
     std::string_view getName() const;
+    /// Returns the monitor the window is (most) on
+    Monitor getCurrentMonitor();
 
     /// Makes the window fullscreened
     ///  If no monitor is specified the primary one is used
     ///  If no mode is specified the window is considered windowed fullscreen and just
     ///      takes on the settings of the monitor it is attached to
-    void makeFullscreen(Monitor monitor = Monitor::Primary(), const Monitor::VideoMode* mode = Monitor::Primary().videoMode());
+    void makeFullscreen(Monitor monitor = Monitor::Current, const Monitor::VideoMode* mode = &Monitor::VideoMode::Current);
     /// Makes the window no longer fullscreened.
     ///  If width and height aren't specified, the size of the window before it became
     ///      fullscreened is used instead.
     void makeWindowed(int width = -1, int height = -1);
+    void makeWindowed(std::pair<int, int> dimensions = {-1, -1}) { makeWindowed(dimensions.first, dimensions.second); }
 
     /// Brings the window to the front and sets it as input focused.
     ///     Can be annoying so avoid using.
@@ -116,4 +121,8 @@ public:
 
     /// Returns true if all windows which have been opened so far have been closed.
     static bool allWindowsClosed();
+
+    /// Closes out all connections to the window manager
+    ///     Must be called after all window classes have finished being destroyed.
+    static void terminate();
 };

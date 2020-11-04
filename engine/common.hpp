@@ -14,8 +14,8 @@
 
 #include "util/repeat.h"    // repeat loop
 
-// Macro which sets up defered function calls using nytl::ScopeGuard
-//  What is the source code to be defered till the end of the scope
+// Macro which sets up deferred function calls using nytl::ScopeGuard
+//  What is the source code to be deferred till the end of the scope
 //  ID is a unique ID (since a variable is created, the variable needs to have a unique name)
 #define defer(what, id) nytl::ScopeGuard id([&]() { what });
 
@@ -51,7 +51,7 @@ std::vector<std::byte> readStream(std::istream& f, size_t start = 0, long len = 
 namespace nytl {
     // Makes the specified variable into a span of length 1
     template <typename T>
-    nytl::span<T> make_span(T& what){
+    FORCE_INLINE nytl::span<T> make_span(T& what){
         return {&what, 1};
     }
 }

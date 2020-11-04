@@ -60,11 +60,11 @@ protected:
     GraphicsState& state;
 
     // Pipeline for the material of this object
-    // TODO: replace with matetial system
+    // TODO: replace with material system
     Material* material = nullptr;
     // Core Buffers
     vpp::SubBuffer vertexBuffer, indexBuffer;
-    // Number of indecies in the index buffer
+    // Number of indices in the index buffer
     uint64_t indexCount;
 
 

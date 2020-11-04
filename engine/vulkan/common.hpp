@@ -5,6 +5,9 @@
 // Vulkan
 #include <vpp/vpp.hpp>
 
+vpp::Instance createInstance(str appName, uint32_t appVersion, std::vector<const char*> extraExtensions = {}, std::vector<const char*> extraValidationLayers = {});
+vpp::Instance createDebugInstance(str appName, uint32_t appVersion, std::vector<const char*> extraExtensions = {}, std::vector<const char*> extraValidationLayers = {});
+
 std::vector<const char*> validateInstanceLayers(std::vector<const char*> layers);
 std::vector<const char*> validateInstanceExtensions(std::vector<const char*> extensions);
 
@@ -16,7 +19,7 @@ public:
 
     void waitIdle() const { vk::deviceWaitIdle(vkHandle()); }
 
-    void waitForFence(vk::Fence fence, uint64_t timeout = UINT64_MAX) const { waitForFences({&fence, 1}, false, timeout); }
+    void waitForFence(vk::Fence fence, uint64_t timeout = UINT64_MAX) const { waitForFences(nytl::make_span(fence), false, timeout); }
     void waitForFences(nytl::span<vk::Fence> fences, bool waitAll = true, uint64_t timeout = UINT64_MAX) const {
         vk::waitForFences(vkHandle(), fences, (waitAll ? VK_TRUE : VK_FALSE), timeout);
         vk::resetFences(vkHandle(), fences); // Reset the fence so that we don't just automatically bypass it

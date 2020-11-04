@@ -241,7 +241,7 @@ bool GraphicsState::rerecordCommandBuffers(){
     vk::Viewport viewport{0, 0, (float) extent.width, (float) extent.height, 0, 1};
     vk::Rect2D scissor{{0, 0}, {extent.width, extent.height}};
     // Specify the blank render color
-    vk::ClearValue clearValue = {0, 0, 0, 1}; // full opacity black
+    vk::ClearValue clearValue = { { {0, 0, 0, 1} } }; // full opacity black
 
     repeat(renderBuffers.size(), i){
         vk::beginCommandBuffer(renderBuffers[i].commandBuffer, {});
@@ -293,7 +293,8 @@ bool GraphicsState::mainLoop(uint64_t frame){
             rerecordCommandBuffers();
         // If we have an error we haven't handled, throw it further up
         } else
-            throw e;
+            // Rethrow the original exception
+            throw;
     }
     // If an exception was caught something didn't go right (but this wasn't fatal)
     return false;

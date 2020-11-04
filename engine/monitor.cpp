@@ -3,19 +3,29 @@
 // GLFW
 #include <GLFW/glfw3.h>
 
+// Current monitor constant
+const Monitor Monitor::Current = nullptr;
+// Current VideoMode constant (set to an invalid value)
+const Monitor::VideoMode Monitor::VideoMode::Current = {-1, -1, -1, -1, -1, -1};
+
 const Monitor::VideoMode* Monitor::videoMode() const {
     return (VideoMode*) glfwGetVideoMode(monitor);
 }
 
-std::pair<int, int> Monitor::position() const {
+/// Returns the xPosition, yPosition, width, and height of the monitor
+std::tuple<int, int, int, int> Monitor::workArea() const{
     int xpos, ypos, width, height;
     glfwGetMonitorWorkarea(monitor, &xpos, &ypos, &width, &height);
+    return {xpos, ypos, width, height};
+}
+
+std::pair<int, int> Monitor::position() const {
+    auto [xpos, ypos, width, height] = workArea();
     return {xpos, ypos};
 }
 
 std::pair<int, int> Monitor::size() const {
-    int xpos, ypos, width, height;
-    glfwGetMonitorWorkarea(monitor, &xpos, &ypos, &width, &height);
+    auto [xpos, ypos, width, height] = workArea();
     return {width, height};
 }
 

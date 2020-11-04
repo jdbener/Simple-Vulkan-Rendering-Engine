@@ -90,13 +90,6 @@ Window::Window(vpp::Instance& instance, int width, int height, str _name, Device
 // Destroy the window when it goes out of scope
 Window::~Window(){
     destroy();
-
-    // If this was the last open window, shutdown GLFW (if not already closed)
-    if(windowCount <= 0 && glfwInitalized){
-        dlg_info("Terminating GLFW");
-        glfwInitalized = false;
-        glfwTerminate();
-    }
 }
 
 // Destroy the window
@@ -135,6 +128,14 @@ std::pair<int, int> Window::getFrameSize() const {
     return std::make_pair(width, height);
 }
 
+// Gets the position on the monitor of the window
+std::pair<int, int> Window::getPosition() const{
+    if(!window) throw WindowNotFound(name);
+    int x, y;
+    glfwGetWindowPos(window, &x, &y);
+    return std::make_pair(x, y);
+}
+
 // Returns the current name of the window
 std::string_view Window::getName() const{
     if(!window) throw WindowNotFound(name);
@@ -148,12 +149,54 @@ void Window::setName(str& _name){
     glfwSetWindowTitle(window, name.c_str());
 }
 
+//  Note referenced from https://stackoverflow.com/questions/21421074/how-to-create-a-full-screen-window-on-the-current-monitor-with-glfw
+/// Returns the monitor the window is (most) on
+Monitor Window::getCurrentMonitor(){
+    int bestOverlap = 0, overlap;
+    Monitor bestMonitor = Monitor::Primary();
+
+    // Window's width and height
+    auto [ww, wh] = getTotalSize();
+    // Window's position
+    auto [wx, wy] = getPosition();
+
+    std::vector<Monitor> monitors = Monitor::Monitors();
+    // For each monitor...
+    for(Monitor& monitor: monitors){
+        // Monitor's postion, width, and height
+        auto [mx, my, mw, mh] = monitor.workArea();
+
+        // Calculates how much the window overlaps with this monitor
+        overlap = std::max(0, std::min(wx + ww, mx + mw) - std::max(wx, mx)) *
+            std::max(0, std::min(wy + wh, my + mh) - std::max(wy, my));
+
+        // If this monitor overlaps more than the current most, mark it as the
+        // most overlapping.
+        if(overlap > bestOverlap){
+            bestOverlap = overlap;
+            bestMonitor = monitor;
+        }
+    }
+
+    return bestMonitor;
+}
+
 // Makes the window fullscreened.
 //  If no monitor is specified the primary one is used.
 //  If no mode is specified the window is considered windowed fullscreen and just
 //      takes on the settings of the monitor it is attached to
 void Window::makeFullscreen(Monitor monitor, const Monitor::VideoMode* mode){
     if(!window) throw WindowNotFound(name);
+
+    // If the monitor is set to the current constant...
+    if(monitor == Monitor::Current)
+        // Get the current monitor
+        monitor = getCurrentMonitor();
+    // If the VideoMode is set to the current constant...
+    if(mode == &Monitor::VideoMode::Current)
+        // Get the provided monitor's video mode
+        mode = monitor.videoMode();
+
     // Save the dimensions of the old window
     savedWindowDimensions = getTotalSize();
     // Make the window fullscreened on the specified monitor
@@ -285,4 +328,17 @@ std::vector<const char*> Window::requiredVulkanExtensions(){
 // Returns true if all windows which have been opened so far have been closed.
 bool Window::allWindowsClosed(){
     return windowCount == 0;
+}
+
+/// Closes out all connections to the window manager
+///     Must be called after all window classes have finished being destroyed.
+void Window::terminate(){
+    if(windowCount > 0) throw std::runtime_error("Can't terminate GLFW while windows are still open.");
+
+    // If this was the last open window, shutdown GLFW (if not already closed)
+    if(glfwInitalized){
+        dlg_info("Terminating GLFW");
+        glfwInitalized = false;
+        glfwTerminate();
+    }
 }

@@ -1,4 +1,6 @@
 #pragma once
+// Disable the uninitialized variables in constexpr functions error
+#pragma clang diagnostic ignored "-Wc++20-extensions"
 
 #define GAME_VERSION VK_MAKE_VERSION(0, 0, 1)
 #define ENGINE_VERSION VK_MAKE_VERSION(0, 0, 1)

@@ -9,19 +9,19 @@ Mesh<indexType, bit>::Mesh(GraphicsState& _state)
   : state(_state) {}
 
 template <typename indexType, typename bit>
-Mesh<indexType, bit>::Mesh(GraphicsState& _state, std::vector<Vertex>& vertecies, std::vector<indexType>& indecies)
-  : state(_state), indexCount(indecies.size()) {
+Mesh<indexType, bit>::Mesh(GraphicsState& _state, std::vector<Vertex>& vertices, std::vector<indexType>& indices)
+  : state(_state), indexCount(indices.size()) {
     // Create the buffers
     vpp::BufferAllocator& ba = state.device().bufferAllocator();
-    vertexBuffer = {ba, vertecies.size() * sizeof(vertecies[0]), vk::BufferUsageBits::vertexBuffer | vk::BufferUsageBits::transferDst, (unsigned int) vk::MemoryPropertyBits::deviceLocal};
-    indexBuffer = {ba, indecies.size() * sizeof(indecies[0]), vk::BufferUsageBits::indexBuffer | vk::BufferUsageBits::transferDst, (unsigned int) vk::MemoryPropertyBits::deviceLocal};
+    vertexBuffer = {ba, vertices.size() * sizeof(vertices[0]), vk::BufferUsageBits::vertexBuffer | vk::BufferUsageBits::transferDst, (unsigned int) vk::MemoryPropertyBits::deviceLocal};
+    indexBuffer = {ba, indices.size() * sizeof(indices[0]), vk::BufferUsageBits::indexBuffer | vk::BufferUsageBits::transferDst, (unsigned int) vk::MemoryPropertyBits::deviceLocal};
 
     // Begin copying the data into the gpu buffers
     vpp::CommandBuffer vertCB = state.commandPool.allocate(), indexCB = state.commandPool.allocate();
-    uint32_t vid = state.fillStaging(vertexBuffer, vertecies, /*wait*/ false, vertCB);
-    uint32_t iid = state.fillStaging(indexBuffer, indecies, /*wait*/ false, indexCB);
+    uint32_t vid = state.fillStaging(vertexBuffer, vertices, /*wait*/ false, vertCB);
+    uint32_t iid = state.fillStaging(indexBuffer, indices, /*wait*/ false, indexCB);
 
-    // Wait for the vertex and index buffers to both have their data coppied
+    // Wait for the vertex and index buffers to both have their data copied
     state.device().queueSubmitter().wait(vid);
     state.device().queueSubmitter().wait(iid);
 }

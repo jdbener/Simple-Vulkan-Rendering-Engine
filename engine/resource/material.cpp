@@ -1,6 +1,6 @@
 #include "material.hpp"
 
-/// Creates the pipeline create info for this material which can then be modified and eventually finialized
+/// Creates the pipeline create info for this material which can then be modified and eventually finalized
 GraphicsMaterial::CreateInfo GraphicsMaterial::begin(vpp::ShaderProgram&& program, nytl::Span<const vk::DescriptorSetLayout> uniforms, nytl::Span<const vk::PushConstantRange> constants) {
     GraphicsState& gState = reinterpret_cast<GraphicsState&>(state);
 
@@ -17,6 +17,6 @@ void GraphicsMaterial::finalize(GraphicsMaterial::CreateInfo& info){
     // Creates the pipeline
     pipeline = {state.device(), info.info()};
 
-    // Stores the provided layout (if nessicary)
+    // Stores the provided layout (if necessary)
     if(rebindLayout) layout = {state.device(), info.info().layout};
 }

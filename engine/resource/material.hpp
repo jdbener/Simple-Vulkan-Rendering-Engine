@@ -31,12 +31,12 @@ public:
 using CreateInfo = vpp::GraphicsPipelineInfo;
 
 private:
-    /// Override which makes the all in one constructer possible
+    /// Override which makes the all in one constructor possible
     GraphicsMaterial(GraphicsState& gstate, CreateInfo&& info)
         : GraphicsMaterial(gstate, info) {}
 
 public:
-    /// Creates an empty material, usefull for then beginning
+    /// Creates an empty material, useful for the beginning of the creation process
     GraphicsMaterial(GraphicsState& gstate) : Material(gstate) {};
     /// Finializes the provided CreateInfo
     GraphicsMaterial(GraphicsState& gstate, CreateInfo& info)
@@ -45,7 +45,7 @@ public:
     GraphicsMaterial(GraphicsState& gstate, vpp::ShaderProgram&& program, nytl::Span<const vk::DescriptorSetLayout> uniformLayouts = {}, nytl::Span<const vk::PushConstantRange> constantRanges = {})
         : GraphicsMaterial(gstate, begin(std::move(program), uniformLayouts, constantRanges)) {}
 
-    /// Creates the CreateInfo for this material which can then be externally modified and eventually finialized.
+    /// Creates the CreateInfo for this material which can then be externally modified and eventually finalized.
     ///     NOTE: When messing with the members of the CreateInfo struct, don't overwrite the whole struct,
     ///         instead modify the individual elements which need tweaking
     CreateInfo begin(vpp::ShaderProgram&& program, nytl::Span<const vk::DescriptorSetLayout> uniformLayouts = {}, nytl::Span<const vk::PushConstantRange> constantRanges = {});

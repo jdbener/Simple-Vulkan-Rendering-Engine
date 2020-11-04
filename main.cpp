@@ -37,7 +37,7 @@ void updateUniformBuffer(vpp::SubBuffer& buffer, std::variant<std::pair<int, int
     //if(dimensionsAspect.index() == 0) ubo.projection = glm::perspective<float>(glm::radians(45.0), std::get<std::pair<int, int>>(dimensionsAspect).first / (float) std::get<std::pair<int, int>>(dimensionsAspect).second, .1, 10);
     //else ubo.projection = glm::perspective<float>(glm::radians(45.0), std::get<float>(dimensionsAspect), .1, 10);
 
-    // If they are all identity matricies nothing should change
+    // If they are all identity matrices nothing should change
     float size = cos(time) + 1;
     //std::cout << size << std::endl;
     ubo.size = size;
@@ -48,41 +48,41 @@ void updateUniformBuffer(vpp::SubBuffer& buffer, std::variant<std::pair<int, int
 }
 
 int main(){
-    vk::ApplicationInfo appInfo("Project Delta", GAME_VERSION, "Delta Engine", ENGINE_VERSION, VK_API_VERSION_1_2);
+    // Terminate all connections to the window at the end of the program
+    // Termination will still occur even if an exception is thrown!
+    defer(Window::terminate();, WTERM);
 
-    std::vector<const char*> layers = validateInstanceLayers({"VK_LAYER_KHRONOS_validation"});
-    //std::vector<const char*> layers = validateInstanceLayers({});
-    std::vector<const char*> extensions = validateInstanceExtensions(Window::requiredVulkanExtensions()
-        + std::vector<const char*>{VK_EXT_DEBUG_UTILS_EXTENSION_NAME});
-
-    vpp::Instance instance({{}, &appInfo,
-        /*Layer Count*/ (uint32_t) layers.size(),
-        /*Layer Names*/ layers.data(),
-        /*Extension Count*/ (uint32_t) extensions.size(),
-        /*Extension Names*/ extensions.data()});
-    // TEMP: Remove in release builds
+#ifndef DEBUG
+#define DEBUG 1
+#endif
+#if DEBUG == 1
+    vpp::Instance instance = createDebugInstance("Project Delta", GAME_VERSION);
     vpp::DebugMessenger debugMsg(instance);
+#else
+    vpp::Instance instance = createInstance("Project Delta", GAME_VERSION);
+#endif //DEBUG == 1
+
 
     Window w(instance, 800, 600);
     w.setName(str(w.getName()) + " (" + str(w.id()) + ")");
 
-    std::vector<MeshData::Vertex> vertecies {
+    std::vector<MeshData::Vertex> vertices {
         {{0.0, -0.5}, {1.0, 0.0, 0.0}},
         {{0.5, 0.5}, {0.0, 1.0, 0.0}},
         {{-0.5, 0.5}, {0.0, 0, 1.0}}
     };
-    std::vector<uint16_t> indecies {
+    std::vector<uint16_t> indices {
         0, 1, 2
     };
-    Mesh triangle(w, vertecies, indecies);
+    Mesh triangle(w, vertices, indices);
 
 
     vpp::SubBuffer uniformBuffers [w.renderBuffers.size()];
-    vpp::TrDs uboDescriptorSets [w.renderBuffers.size()];
     vpp::TrDsLayout uboDescriptorLayout(w.device(), {UBO::createDescriptorSetLayoutBinding()});
+    vpp::TrDs uboDescriptorSets [w.renderBuffers.size()];
     vk::WriteDescriptorSet writes [w.renderBuffers.size()];
     repeat(w.renderBuffers.size(), i) {
-        // Buffers are host visible/coherent since we will often be copying new data into it and a staging buffer makes that unnessicarily complicated
+        // Buffers are host visible/coherent since we will often be copying new data into it and a staging buffer makes that unnecessarily complicated
         uniformBuffers[i] = {w.device().bufferAllocator(), sizeof(UBO), vk::BufferUsageBits::uniformBuffer, vk::MemoryPropertyBits::hostVisible | vk::MemoryPropertyBits::hostCoherent};
         uboDescriptorSets[i] = w.device().descriptorAllocator().alloc(uboDescriptorLayout);
 
@@ -91,7 +91,6 @@ int main(){
     }
     // Bind the created buffers to their descriptor sets
     vk::updateDescriptorSets(w.device(), {writes, w.renderBuffers.size()}, {});
-
 
 
 
@@ -110,9 +109,9 @@ int main(){
         GraphicsMaterial::CreateInfo matInfo = triangleMat.begin({ std::vector<vpp::ShaderProgram::StageInfo>{
             vertex.createStageInfo(),
             fragment.createStageInfo()
-        } }, {&uboDescriptorLayout.vkHandle(), 1});
+        } }, nytl::make_span(uboDescriptorLayout.vkHandle()) );
 
-        // Describe how vertecies are laid out
+        // Describe how vertices are laid out
         auto binding = MeshData::Vertex::getBindingDescription();
         auto attributes = MeshData::Vertex::getAttributeDescriptions();
         matInfo.vertex.vertexBindingDescriptionCount = 1;
@@ -127,7 +126,7 @@ int main(){
     triangle.bindMaterial(triangleMat);
 
     w.bindCustomCommandRecordingSteps([&](vpp::CommandBuffer& buffer, uint8_t i){
-        vk::cmdBindDescriptorSets(buffer, vk::PipelineBindPoint::graphics, triangleMat.getLayout(), 0, {&uboDescriptorSets[i].vkHandle(), 1}, /*dynamicOffsets*/ {});
+        vk::cmdBindDescriptorSets(buffer, vk::PipelineBindPoint::graphics, triangleMat.getLayout(), 0, nytl::make_span(uboDescriptorSets[i].vkHandle()), /*dynamicOffsets*/ {});
 
         triangle.rerecordCommandBuffer(buffer);
     });
