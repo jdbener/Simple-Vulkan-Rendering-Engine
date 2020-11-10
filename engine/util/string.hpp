@@ -12,6 +12,7 @@
 class str: public std::string {
 public:
     using std::string::string;
+    str() : std::string("") {}
     str(std::string& other) : std::string(other) {}
     str(std::string&& other) : std::string(std::move(other)) {}
 

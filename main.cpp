@@ -74,8 +74,15 @@ int main(){
     std::vector<uint16_t> indices {
         0, 1, 2
     };
-    Mesh triangle(w, vertices, indices);
-
+    std::cout << ResourceManager::singleton()->loaded("memory/Mesh-0") << std::endl;
+    Resource::Ref<BaseMesh> triangle = BaseMesh::create(w, vertices, indices);
+    std::cout << triangle->getName() << std::endl;
+    std::cout << ResourceManager::singleton()->loaded(triangle->getName()) << std::endl;
+    Resource::Ref<BaseMesh> t2 = ResourceManager::singleton()->get<BaseMesh>(triangle->getName());
+    std::cout << t2.refValid() << " - " << t2.valid() << std::endl;
+    // ResourceManager::singleton()->remove(triangle->getName());
+    // std::cout << t2.refValid() << " - " << t2.valid() << std::endl;
+    // std::cout << triangle->getName() << std::endl;
 
     vpp::SubBuffer uniformBuffers [w.renderBuffers.size()];
     vpp::TrDsLayout uboDescriptorLayout(w.device(), {UBO::createDescriptorSetLayoutBinding()});
@@ -123,12 +130,12 @@ int main(){
         triangleMat.finalize(matInfo);
     }
 
-    triangle.bindMaterial(triangleMat);
+    triangle->bindMaterial(triangleMat);
 
     w.bindCustomCommandRecordingSteps([&](vpp::CommandBuffer& buffer, uint8_t i){
         vk::cmdBindDescriptorSets(buffer, vk::PipelineBindPoint::graphics, triangleMat.getLayout(), 0, nytl::make_span(uboDescriptorSets[i].vkHandle()), /*dynamicOffsets*/ {});
 
-        triangle.rerecordCommandBuffer(buffer);
+        triangle->rerecordCommandBuffer(buffer);
     });
     w.rerecordCommandBuffers();
 

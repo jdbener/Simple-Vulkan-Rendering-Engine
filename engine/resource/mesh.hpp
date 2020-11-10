@@ -3,6 +3,8 @@
 #include "engine/vulkan/state.hpp"
 #include "engine/math/math.hpp"
 
+#include "resource.hpp"
+
 class Material;
 
 namespace MeshData {
@@ -10,7 +12,7 @@ namespace MeshData {
         glm::vec3 position, normal, tangent;
         glm::vec2 uv;
 
-        // TODO: remove
+        // TODO: create secondary data UBO and implementation
         glm::vec3 color;
 
         Vertex() = default;
@@ -35,25 +37,25 @@ namespace MeshData {
 
     // TODO: Implement mechanisms for sending this binding this data
     // Struct representing the ubo which will be sent to the shader
-    template <typename boneIndexType = uint8_t>
-    struct SecondaryData {
-        // Variable storing how many bones at max each vertex can reference
-        uint8_t boneSpan;
-
-        std::vector<glm::vec3> colors = {};
-        std::vector<glm::vec2> uv2s = {}, uv3s = {}, uv4s = {}, lightmapUVs = {};
-
-        // Each of these arrays are incremented by boneSpan
-        std::vector<boneIndexType> boneIndecies = {};
-        std::vector<float> boneWeights = {};
-    };
+    // template <typename boneIndexType = uint8_t>
+    // struct SecondaryData {
+    //     // Variable storing how many bones at max each vertex can reference
+    //     uint8_t boneSpan;
+    //
+    //     std::vector<glm::vec3> colors = {};
+    //     std::vector<glm::vec2> uv2s = {}, uv3s = {}, uv4s = {}, lightmapUVs = {};
+    //
+    //     // Each of these arrays are incremented by boneSpan
+    //     std::vector<boneIndexType> boneIndecies = {};
+    //     std::vector<float> boneWeights = {};
+    // };
 }
 
 // TODO: resource type class this inherits from?
 template <typename indexType = uint16_t, typename boneIndexType = uint8_t> // Mesh<uint16_t> and Mesh<uint32_t>
-class Mesh {
+class Mesh: public Resource {
 using Vertex = MeshData::Vertex;
-using SecondaryData = MeshData::SecondaryData<boneIndexType>;
+//using SecondaryData = MeshData::SecondaryData<boneIndexType>;
 
 protected:
     // Reference to a vulkan state to pull command buffers from
@@ -61,7 +63,7 @@ protected:
 
     // Pipeline for the material of this object
     // TODO: replace with material system
-    Material* material = nullptr;
+    class Material* material = nullptr;
     // Core Buffers
     vpp::SubBuffer vertexBuffer, indexBuffer;
     // Number of indices in the index buffer
@@ -69,17 +71,27 @@ protected:
 
 
 public:
-    Mesh() = default;
+    Mesh() : Resource(Resource::Type::Mesh) {}
     Mesh(GraphicsState&);
-    Mesh(GraphicsState&, std::vector<Vertex>&, std::vector<indexType>&);
-    virtual ~Mesh() {}
+    //Mesh(GraphicsState&, std::vector<Vertex>&, std::vector<indexType>&);
 
     void rerecordCommandBuffer(vpp::CommandBuffer& renderCommandBuffer) const;
 
     //TODO:: replace the single material with instance data
-    Mesh& bindMaterial(Material& mat) { material = &mat; return *this;}
+    Mesh& bindMaterial(class Material& mat) { material = &mat; return *this;}
     //Mesh& bindVertexColors();
+
+public:
+    static Ref<Mesh> create(GraphicsState&, const str name = "");
+    static Ref<Mesh> create(GraphicsState&, std::vector<Vertex>&, std::vector<indexType>&, const str name = "");
+    static Ref<Mesh> load(const str filepath) { throw StateNotProvidedException("A GraphicsState must be provided when creating a mesh."); }
+    static Ref<Mesh> load(std::istream& file) { throw StateNotProvidedException("A GraphicsState must be provided when creating a mesh."); }
+    static Ref<Mesh> load(GraphicsState&, const str filepath);
+    static Ref<Mesh> load(GraphicsState&, std::istream& file);
 };
+
+// Typedef the default values of a mesh
+typedef Mesh<uint16_t, uint8_t> BaseMesh;
 
 
 

@@ -2,6 +2,9 @@
 
 #include "common.hpp"
 
+// Exception which is thrown when a required VulkanState isn't provided
+struct StateNotProvidedException: public std::runtime_error{ using std::runtime_error::runtime_error; };
+
 /// Class which stores all of the variables common to a graphics or compute pipeline
 class VulkanState {
 private:
