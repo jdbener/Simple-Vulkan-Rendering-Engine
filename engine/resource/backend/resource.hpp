@@ -1,5 +1,5 @@
-#ifndef __RESOURCE_H__
-#define __RESOURCE_H__
+#ifndef __RESOURCE_BACKEND_H__
+#define __RESOURCE_BACKEND_H__
 
 #include "engine/common.hpp"
 #include "engine/util/string.hpp"
@@ -25,11 +25,13 @@ public:
 public:
     template <class T = Resource>
     class Ref {
+    // Mark all template implementations of Ref as friends
+    template <class T2> friend class Ref;
     protected:
         T* ref = nullptr;
 
     public:
-        Ref(Resource* _ref) : ref(reinterpret_cast<T*>(_ref)) { if(ref) ref->refs++; }
+        Ref(Resource* _ref = nullptr) : ref(reinterpret_cast<T*>(_ref)) { if(ref) ref->refs++; }
         // Copy constructor increments the ref count
         template<class T2> Ref(Ref<T2>& other) : ref(reinterpret_cast<T*>(other.ref)) { if(ref) ref->refs++; }
         // Move constructor insures the other object doesn't reduce the ref count
@@ -56,8 +58,12 @@ public:
 
         FORCE_INLINE T& operator* () const { return *ref; }
         FORCE_INLINE T* operator->() const { return ref; }
-        FORCE_INLINE operator T() { return *ref; }
-        FORCE_INLINE operator bool() { return valid(); }
+        operator T() { return *ref; }
+        operator bool() { return valid(); }
+
+        // Comparison operators so that Refs can be stored in trees (maps)
+        template <class T2> bool operator< (const Ref<T2>& other) const { return ref < other.ref; }
+        template <class T2> bool operator< (const Ref<T2>&& other) const { return operator< (other); }
     };
 
 protected:
@@ -79,14 +85,13 @@ public:
 
     /// Function which creates an empty version of this resource which can then be modified
     static Ref<Resource> create(const str name = "");
-    /// Function which loads the resource from the specified file
-    static Ref<Resource> load(const str filepath) { std::ifstream fin(filepath); return load(fin); }
     /// Function which loads the resource from the input stream
-    static Ref<Resource> load(std::istream& file) { throw std::runtime_error("Base Resources can't be loaded! Load a particular type of resource!"); }
+    static Ref<Resource> load(std::istream&) { throw std::runtime_error("Base Resources can't be loaded! Load a particular type of resource!"); }
+    static Ref<Resource> load(std::istream&& file) { return load(file); }
 
 protected:
     // Function which cleans up this resource once all references to it have been destroyed
     void conditionalReset();
 };
 
-#endif // __RESOURCE_H__
+#endif // __RESOURCE_BACKEND_H__

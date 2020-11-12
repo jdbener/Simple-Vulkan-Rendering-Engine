@@ -14,9 +14,9 @@
 
 #include "util/repeat.h"    // repeat loop
 
-// Macro which sets up deferred function calls using nytl::ScopeGuard
-//  What is the source code to be deferred till the end of the scope
-//  ID is a unique ID (since a variable is created, the variable needs to have a unique name)
+/// Macro which sets up deferred function calls using nytl::ScopeGuard
+///  What is the source code to be deferred till the end of the scope
+///  ID is a unique ID (since a variable is created, the variable needs to have a unique name)
 #define defer(what, id) nytl::ScopeGuard id([&]() { what });
 
 // Enable appending vectors of the same type with the + operator
@@ -25,6 +25,25 @@ std::vector<T> operator+(std::vector<T> a, std::vector<T> b){
     a.reserve(a.size() + b.size());
     for(T& cur: b) a.push_back(cur);
     return a;
+}
+
+// Enable appending std::arrays of the same type with the + operaor
+template <typename T, size_t aSize, size_t bSize>
+std::array<T, aSize + bSize> operator+ (std::array<T, aSize> a, std::array<T, bSize> b){
+    std::array<T, aSize + bSize> out;
+    // Copy a's data
+    memcpy(out.data(), a.data(), aSize * sizeof(T));
+    // Copy b's data
+    memcpy(out.data() + aSize, b.data(), bSize * sizeof(T));
+    return out;
+}
+
+/// Copies the provided array into an std::array
+template <size_t size, typename T>
+std::array<T, size> make_array(T* array){
+    std::array<T, size> out;
+    memcpy(out.data(), array, size * sizeof(T));
+    return out;
 }
 
 // Enable writing std::vectors out to ostreams

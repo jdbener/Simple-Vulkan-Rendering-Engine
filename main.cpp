@@ -56,7 +56,9 @@ int main(){
 #define DEBUG 1
 #endif
 #if DEBUG == 1
-    vpp::Instance instance = createDebugInstance("Project Delta", GAME_VERSION);
+    // vk::ValidationFeatureEnableEXT enabled = (vk::ValidationFeatureEnableEXT) VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT;
+    // vk::ValidationFeaturesEXT extraFeatures(1, &enabled);
+    vpp::Instance instance = createDebugInstance("Project Delta", GAME_VERSION/*, {}, {}, &extraFeatures*/);
     vpp::DebugMessenger debugMsg(instance);
 #else
     vpp::Instance instance = createInstance("Project Delta", GAME_VERSION);
@@ -66,7 +68,7 @@ int main(){
     Window w(instance, 800, 600);
     w.setName(str(w.getName()) + " (" + str(w.id()) + ")");
 
-    std::vector<MeshData::Vertex> vertices {
+    std::vector<Mesh::Vertex> vertices {
         {{0.0, -0.5}, {1.0, 0.0, 0.0}},
         {{0.5, 0.5}, {0.0, 1.0, 0.0}},
         {{-0.5, 0.5}, {0.0, 0, 1.0}}
@@ -74,15 +76,9 @@ int main(){
     std::vector<uint16_t> indices {
         0, 1, 2
     };
-    std::cout << ResourceManager::singleton()->loaded("memory/Mesh-0") << std::endl;
-    Resource::Ref<BaseMesh> triangle = BaseMesh::create(w, vertices, indices);
-    std::cout << triangle->getName() << std::endl;
-    std::cout << ResourceManager::singleton()->loaded(triangle->getName()) << std::endl;
-    Resource::Ref<BaseMesh> t2 = ResourceManager::singleton()->get<BaseMesh>(triangle->getName());
-    std::cout << t2.refValid() << " - " << t2.valid() << std::endl;
-    // ResourceManager::singleton()->remove(triangle->getName());
-    // std::cout << t2.refValid() << " - " << t2.valid() << std::endl;
-    // std::cout << triangle->getName() << std::endl;
+    Resource::Ref<Mesh> triangle = Mesh::create(w, vertices, indices);
+
+
 
     vpp::SubBuffer uniformBuffers [w.renderBuffers.size()];
     vpp::TrDsLayout uboDescriptorLayout(w.device(), {UBO::createDescriptorSetLayoutBinding()});
@@ -102,39 +98,37 @@ int main(){
 
 
 
-    GraphicsMaterial triangleMat(w);
+    Resource::Ref<GraphicsMaterial> triangleMat = GraphicsMaterial::create(w);
     {
         // Load the shaders for the material
-        std::ifstream vertexSource("../test.vert.glsl");
-        GLSLShaderModule vertex(w.device(), vertexSource, vk::ShaderStageBits::vertex);
-        std::ifstream fragmentSource("../test.frag.glsl");
-        GLSLShaderModule fragment(w.device(), fragmentSource, vk::ShaderStageBits::fragment);
+        GLSLShaderModule vertex(w.device(), std::ifstream{"../test.vert.glsl"}, vk::ShaderStageBits::vertex);
+        GLSLShaderModule fragment(w.device(), std::ifstream{"../test.frag.glsl"}, vk::ShaderStageBits::fragment);
 
         // Create the setup structure for the material
         // NOTE: When messing with the members of this struct, don't overwrite the whole struct,
         //  instead modify the individual elements which need tweaking
-        GraphicsMaterial::CreateInfo matInfo = triangleMat.begin({ std::vector<vpp::ShaderProgram::StageInfo>{
+        GraphicsMaterial::CreateInfo matInfo = triangleMat->begin({ std::vector<vpp::ShaderProgram::StageInfo>{
             vertex.createStageInfo(),
             fragment.createStageInfo()
         } }, nytl::make_span(uboDescriptorLayout.vkHandle()) );
 
-        // Describe how vertices are laid out
-        auto binding = MeshData::Vertex::getBindingDescription();
-        auto attributes = MeshData::Vertex::getAttributeDescriptions();
-        matInfo.vertex.vertexBindingDescriptionCount = 1;
-        matInfo.vertex.pVertexBindingDescriptions = &binding;
-        matInfo.vertex.vertexAttributeDescriptionCount = attributes.size();
-        matInfo.vertex.pVertexAttributeDescriptions = attributes.data();
+        // Describe how vertices/instances are laid out
+        Mesh::bindVertexBindings(matInfo);
 
         // Finalize the material and create all of the internal vulkan objects
-        triangleMat.finalize(matInfo);
+        triangleMat->finalize(matInfo);
     }
 
-    triangle->bindMaterial(triangleMat);
+
+    // Add an instamce with an identity transform
+    triangle->addInstance(glm::identity<glm::mat4>(), triangleMat);
+    triangle->uploadInstanceBuffers();
 
     w.bindCustomCommandRecordingSteps([&](vpp::CommandBuffer& buffer, uint8_t i){
-        vk::cmdBindDescriptorSets(buffer, vk::PipelineBindPoint::graphics, triangleMat.getLayout(), 0, nytl::make_span(uboDescriptorSets[i].vkHandle()), /*dynamicOffsets*/ {});
+        // Bind the uniform buffer
+        vk::cmdBindDescriptorSets(buffer, vk::PipelineBindPoint::graphics, triangleMat->getLayout(), 0, nytl::make_span(uboDescriptorSets[i].vkHandle()), /*dynamicOffsets*/ {});
 
+        // Bind all of the buffers needed to draw the mesh
         triangle->rerecordCommandBuffer(buffer);
     });
     w.rerecordCommandBuffers();

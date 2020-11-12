@@ -152,7 +152,7 @@ void GraphicsState::recreateSwapchain(DeviceCreateInfo deviceInfo, vk::Extent2D 
     } else if(deviceInfo.valid == DeviceCreateInfo::NO_INITAL){
         dlg_info("State " + str(id()) + ": Creating swapchain, picking 'best' device.");
         const vpp::Queue* present;
-        _device = std::make_unique<VulkDevice>(surface.vkInstance(), surface, present);
+        _device = std::make_unique<VulkDevice>(surface.vkInstance(), surface, present/*, std::vector<const char *>{"VK_KHR_shader_non_semantic_info"}*/);
         swapchain = vpp::Swapchain(device(), swapchainProperties(device().vkPhysicalDevice(), surface.vkHandle()));
 
     // We just need to resize the swapchain

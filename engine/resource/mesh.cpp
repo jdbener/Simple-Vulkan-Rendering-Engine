@@ -4,20 +4,20 @@
 
 #include "material.hpp"
 
-template <typename indexType, typename bit>
-Mesh<indexType, bit>::Mesh(GraphicsState& _state)
+template <typename it, typename bit>
+_Mesh<it, bit>::_Mesh(GraphicsState& _state)
   : Resource(Resource::Type::Mesh), state(_state) {}
 
 template <typename it, typename bit>
-Resource::Ref<Mesh<it, bit>> Mesh<it, bit>::create(GraphicsState& state, str name){
+Resource::Ref<_Mesh<it, bit>> _Mesh<it, bit>::create(GraphicsState& state, str name){
     // Create memory for the resource
-    Mesh* _new = new Mesh(state);
+    _Mesh* _new = new _Mesh(state);
     // Add a reference to the resource's memory to the ResourceManager and return a reference
-    return ResourceManager::singleton()->add<Mesh<it, bit>>(name, *_new);
+    return ResourceManager::singleton()->add<_Mesh<it, bit>>(name, *_new);
 }
 
 template <typename indexType, typename bit>
-Resource::Ref<Mesh<indexType, bit>> Mesh<indexType, bit>::create(GraphicsState& state, std::vector<Vertex>& vertices, std::vector<indexType>& indices, str name){
+Resource::Ref<_Mesh<indexType, bit>> _Mesh<indexType, bit>::create(GraphicsState& state, std::vector<Vertex>& vertices, std::vector<indexType>& indices, str name){
     // Allocate memory for a new mesh
     auto out = create(state, name);
 
@@ -41,29 +41,78 @@ Resource::Ref<Mesh<indexType, bit>> Mesh<indexType, bit>::create(GraphicsState& 
     return out;
 }
 
+template <typename it, typename bit>
+typename _Mesh<it, bit>::Instance& _Mesh<it, bit>::addInstance(glm::mat4 transform, Ref<class Material>& material){
+    // If the material is not in the map...
+    if(instances.find(material) == instances.end())
+        // Add an empty vector
+        instances.emplace(material, std::make_pair(vpp::SubBuffer{}, std::vector<Instance>{}));
+
+    // // References to the stored data elements
+    std::vector<Instance>& insts = instances[material].second;
+    // vpp::SubBuffer& buffer = instances[material].first;
+
+    // Add the instance to the array
+    insts.emplace_back(transform);
+    return insts.back();
+}
+
+template <typename it, typename bit>
+void _Mesh<it, bit>::uploadInstanceBuffers(){
+    std::vector<std::pair<uint32_t, vpp::CommandBuffer>> runningUploads;
+    runningUploads.reserve(instances.size());
+
+    // For each unique material in instances map
+    for(std::pair<const Ref<class Material>, std::pair<vpp::SubBuffer, std::vector<Instance>>>& instanceData: instances){
+        // Reference the stored data elements
+        std::vector<Instance>& insts = instanceData.second.second;
+        vpp::SubBuffer& buffer = instanceData.second.first;
+
+        // Create a buffer large enouph to hold all of the instances for this material
+        buffer = {state.device().bufferAllocator(), insts.size() * sizeof(Instance), vk::BufferUsageBits::vertexBuffer | vk::BufferUsageBits::transferDst, (unsigned int) vk::MemoryPropertyBits::deviceLocal};
+
+        // Begin uploading the data to the buffer and add it to the list of running uploads
+        vpp::CommandBuffer cb = state.commandPool.allocate();
+        uint32_t waitID = state.fillStaging(buffer, insts, false, cb);
+        runningUploads.emplace_back(waitID, std::move(cb));
+    }
+
+    for(auto& upload: runningUploads)
+        // Wait for all of the data that we enqueued to be copied to the GPU
+        state.device().queueSubmitter().wait(upload.first);
+
+    // The command buffers should be destroyed as part of the cleanup process
+}
 
 template <typename indexType, typename bit>
-void Mesh<indexType, bit>::rerecordCommandBuffer(vpp::CommandBuffer& renderCommandBuffer) const {
-    // Bind the pipeline
-    if(!material) throw vk::VulkanError(vk::Result::errorInitializationFailed, "Can't record command buffer if no Material has been provided.");
-    vk::cmdBindPipeline(renderCommandBuffer, vk::PipelineBindPoint::graphics, material->getPipeline());
-    // Bind the vertex buffer
-    vk::cmdBindVertexBuffers(renderCommandBuffer, /*firstBinding*/ 0, 1, vertexBuffer.buffer(), vertexBuffer.offset());
-    // Bind the index buffer
-    constexpr vk::IndexType vkIndexType = (sizeof(indexType) < 32 ? vk::IndexType::uint16 : vk::IndexType::uint32);
-    vk::cmdBindIndexBuffer(renderCommandBuffer, indexBuffer.buffer(), indexBuffer.offset(), vkIndexType);
+void _Mesh<indexType, bit>::rerecordCommandBuffer(vpp::CommandBuffer& renderCommandBuffer) const {
+    for(auto it = instances.begin(); it != instances.end(); ++it) {
+        // Reference the stored data elements
+        const Ref<class Material>& material = it->first;
+        const vpp::SubBuffer& instanceBuffer = it->second.first;
+        uint64_t instanceCount = it->second.second.size();
 
-    // Draw
-    vk::cmdDrawIndexed(renderCommandBuffer, indexCount, /*instanceCount*/ 1, /*firstIndex*/ 0, /*vertexOffset*/ 0, /*firstInstance*/ 0);
+        //Bind the pipeline
+        if(!material->valid()) throw vk::VulkanError(vk::Result::errorInitializationFailed, "Can't record command buffer material: '" + material->getName() + "' is invalid.");
+        vk::cmdBindPipeline(renderCommandBuffer, vk::PipelineBindPoint::graphics, material->getPipeline());
+
+        // Bind the vertex buffer
+        vk::cmdBindVertexBuffers(renderCommandBuffer, /*firstBinding*/ 0, 1, vertexBuffer.buffer(), vertexBuffer.offset());
+
+        // Bind the instance buffer
+        vk::cmdBindVertexBuffers(renderCommandBuffer, /*firstBinding*/ 1, 1, instanceBuffer.buffer(), instanceBuffer.offset());
+
+        // Bind the index buffer
+        constexpr vk::IndexType vkIndexType = (sizeof(indexType) < 32 ? vk::IndexType::uint16 : vk::IndexType::uint32);
+        vk::cmdBindIndexBuffer(renderCommandBuffer, indexBuffer.buffer(), indexBuffer.offset(), vkIndexType);
+
+        // Draw
+        vk::cmdDrawIndexed(renderCommandBuffer, indexCount, /*instanceCount*/ instanceCount, /*firstIndex*/ 0, /*firstVertex*/ 0, /*firstInstance*/ 0);
+    }
 }
 
 template <typename it, typename bit>
-Resource::Ref<Mesh<it, bit>> Mesh<it, bit>::load(GraphicsState& state, const str filepath) {
-    // TODO
-}
-
-template <typename it, typename bit>
-Resource::Ref<Mesh<it, bit>> Mesh<it, bit>::load(GraphicsState& state, std::istream& file) {
+Resource::Ref<_Mesh<it, bit>> _Mesh<it, bit>::load(GraphicsState& state, std::istream& file) {
     // TODO
 }
 

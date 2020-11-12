@@ -3,13 +3,6 @@
 
 #include "resourceManager.hpp"
 
-template<class T>
-bool Resource::Ref<T>::valid(){
-    if(refValid())
-        return ResourceManager::singleton()->loaded(ref->getName());
-    return false;
-}
-
 Resource::Ref<Resource> Resource::create(const str name) {
     // Create memory for the resource
     Resource* _new = new Resource(Resource::Type::Null);

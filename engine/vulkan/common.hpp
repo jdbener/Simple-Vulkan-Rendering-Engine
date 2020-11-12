@@ -5,8 +5,8 @@
 // Vulkan
 #include <vpp/vpp.hpp>
 
-vpp::Instance createInstance(str appName, uint32_t appVersion, std::vector<const char*> extraExtensions = {}, std::vector<const char*> extraValidationLayers = {});
-vpp::Instance createDebugInstance(str appName, uint32_t appVersion, std::vector<const char*> extraExtensions = {}, std::vector<const char*> extraValidationLayers = {});
+vpp::Instance createInstance(str appName, uint32_t appVersion, std::vector<const char*> extraExtensions = {}, std::vector<const char*> extraValidationLayers = {}, const void* pNext = nullptr);
+vpp::Instance createDebugInstance(str appName, uint32_t appVersion, std::vector<const char*> extraExtensions = {}, std::vector<const char*> extraValidationLayers = {}, const void* pNext = nullptr);
 
 std::vector<const char*> validateInstanceLayers(std::vector<const char*> layers);
 std::vector<const char*> validateInstanceExtensions(std::vector<const char*> extensions);
