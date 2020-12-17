@@ -20,8 +20,6 @@
 
 #include "vpp/trackedDescriptor.hpp"
 
-#include "engine/vendor/tinyGLTF.hpp"
-
 #include <fstream>
 
 // Defines for the name of the game and the game's version
@@ -165,27 +163,6 @@ int main(){
     });
 
 
-
-
-
-    // TODO gltf importer https://github.com/syoyo/tinygltf
-    // Potential Random Number Generator, License? Overkill? https://www.pcg-random.org
-
-    tinygltf::Model model;
-    tinygltf::TinyGLTF loader;
-    str err;
-    str warn;
-
-    bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, "../suzanne_simple.gltf");
-    //bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, argv[1]); // for binary glTF(.glb)
-
-    if (!warn.empty()) std::cout << "Warn: " << warn << std::endl;
-    if (!err.empty()) std::cout << "Error: " << err << std::endl;
-    if (!ret) std::cout << "Failed to parse glTF" << std::endl;
-
-
-
-    
 
     uint64_t frame = 0;
     do {

@@ -55,7 +55,7 @@ Window::Window(vpp::Instance& instance, int width, int height, str _name, Device
     VkSurfaceKHR surf;
     if(auto result = (vk::Result) glfwCreateWindowSurface((VkInstance) instance.vkHandle(), window, nullptr, &surf);
       result != vk::Result::success)
-        throw std::runtime_error("Failed to create window '" + name + "' surface: " + vk::name(result));
+        throw std::runtime_error("Failed to create window '" + name + "' surface: " + vk::error::name(result));
     // Convert it to a vpp surface
     surface = vpp::Surface(instance, (vk::SurfaceKHR) surf);
 
