@@ -1,14 +1,32 @@
+// Defines for if the project should be in debug and/or shader debug mode
+#ifndef DEBUG
+#define DEBUG 1
+#endif
+// Enable processing of debugPrintfEXT in shaders
+#ifndef SHADER_DEBUG
+#define SHADER_DEBUG 0
+#endif
+
 #include "engine/util/timer.h"
 
 #include "engine/window.hpp"
 #include "engine/resource/mesh.hpp"
 #include "engine/resource/material.hpp"
 
+#include "engine/math/random.hpp"
+#include "engine/math/transform.hpp"
+
 #include "engine/vulkan/shader.hpp"
 
 #include "vpp/trackedDescriptor.hpp"
 
+#include "engine/vendor/tinyGLTF.hpp"
+
 #include <fstream>
+
+// Defines for the name of the game and the game's version
+#define GAME_NAME "Project Delta"
+#define GAME_VERSION VK_MAKE_VERSION(0, 0, 1)
 
 std::ostream& operator <<(std::ostream& s, std::pair<int, int> size){
     s << "(" << size.first << ", " << size.second << ")";
@@ -17,7 +35,7 @@ std::ostream& operator <<(std::ostream& s, std::pair<int, int> size){
 
 struct UBO {
     float size;
-    glm::mat4 model;
+    alignas(16) glm::mat4 model;
     glm::mat4 view;
     glm::mat4 projection;
 
@@ -32,10 +50,10 @@ void updateUniformBuffer(vpp::SubBuffer& buffer, std::variant<std::pair<int, int
 
     float time = std::chrono::duration<float, std::chrono::seconds::period>(std::chrono::high_resolution_clock::now() - startTime).count();
     UBO ubo;
-    //ubo.model = glm::rotate<float>(glm::mat4(1.0), time * glm::radians(90.0), {0, 0, 1});
-    //ubo.view = glm::lookAt<float>(glm::vec3{2, 2, 2}, {0, 0, 0}, {0, 0, 1});
-    //if(dimensionsAspect.index() == 0) ubo.projection = glm::perspective<float>(glm::radians(45.0), std::get<std::pair<int, int>>(dimensionsAspect).first / (float) std::get<std::pair<int, int>>(dimensionsAspect).second, .1, 10);
-    //else ubo.projection = glm::perspective<float>(glm::radians(45.0), std::get<float>(dimensionsAspect), .1, 10);
+    // ubo.model = glm::rotate<float>(glm::mat4(1.0), time * glm::radians(90.0), {0, 0, 1});
+    // ubo.view = glm::lookAt<float>(glm::vec3{2, 2, 2}, {0, 0, 0}, {0, 0, 1});
+    // if(dimensionsAspect.index() == 0) ubo.projection = glm::perspective<float>(glm::radians(45.0), std::get<std::pair<int, int>>(dimensionsAspect).first / (float) std::get<std::pair<int, int>>(dimensionsAspect).second, .1, 10);
+    // else ubo.projection = glm::perspective<float>(glm::radians(45.0), std::get<float>(dimensionsAspect), .1, 10);
 
     // If they are all identity matrices nothing should change
     float size = cos(time) + 1;
@@ -50,18 +68,21 @@ void updateUniformBuffer(vpp::SubBuffer& buffer, std::variant<std::pair<int, int
 int main(){
     // Terminate all connections to the window at the end of the program
     // Termination will still occur even if an exception is thrown!
-    defer(Window::terminate();, WTERM);
+    defer(Window::terminate();, wTERM);
 
-#ifndef DEBUG
-#define DEBUG 1
-#endif
+
 #if DEBUG == 1
-    // vk::ValidationFeatureEnableEXT enabled = (vk::ValidationFeatureEnableEXT) VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT;
-    // vk::ValidationFeaturesEXT extraFeatures(1, &enabled);
-    vpp::Instance instance = createDebugInstance("Project Delta", GAME_VERSION/*, {}, {}, &extraFeatures*/);
+#   if SHADER_DEBUG == 1
+    vk::ValidationFeatureEnableEXT enabled = (vk::ValidationFeatureEnableEXT) VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT;
+    vk::ValidationFeaturesEXT extraFeatures(1, &enabled);
+    vpp::Instance instance = createDebugInstance(GAME_NAME, GAME_VERSION, {}, {}, &extraFeatures);
+    vpp::DebugMessenger debugMsg(instance, vpp::DebugMessenger::defaultSeverity() | vpp::DebugMessenger::MsgSeverity::info);
+#   else
+    vpp::Instance instance = createDebugInstance(GAME_NAME, GAME_VERSION);
     vpp::DebugMessenger debugMsg(instance);
+#   endif // SHADER_DEBUG == 1
 #else
-    vpp::Instance instance = createInstance("Project Delta", GAME_VERSION);
+    vpp::Instance instance = createInstance(GAME_NAME, GAME_VERSION);
 #endif //DEBUG == 1
 
 
@@ -77,6 +98,7 @@ int main(){
         0, 1, 2
     };
     Resource::Ref<Mesh> triangle = Mesh::create(w, vertices, indices);
+
 
 
 
@@ -112,18 +134,22 @@ int main(){
             fragment.createStageInfo()
         } }, nytl::make_span(uboDescriptorLayout.vkHandle()) );
 
-        // Describe how vertices/instances are laid out
-        Mesh::bindVertexBindings(matInfo);
+        // Describe how vertices/instances are laid out in memory
+        Mesh::bindVertexBindings<GraphicsMaterial::Instance>(matInfo);
 
         // Finalize the material and create all of the internal vulkan objects
         triangleMat->finalize(matInfo);
     }
+    // Add an instance of the triangle with an identity transform and the triangle material
+    triangle->addInstance(Transform(), triangleMat);
+    triangle->addInstance(Transform({0, .5 , 0}, Quaternion::fromEulerAngles(glm::radians(glm::vec3{0, 0, 45}))), triangleMat);
 
 
-    // Add an instamce with an identity transform
-    triangle->addInstance(glm::identity<glm::mat4>(), triangleMat);
-    triangle->uploadInstanceBuffers();
 
+    // Upload any data the resources need to the GPU
+    ResourceManager::singleton()->upload();
+
+    // Record the vulkan rendering command buffers
     w.bindCustomCommandRecordingSteps([&](vpp::CommandBuffer& buffer, uint8_t i){
         // Bind the uniform buffer
         vk::cmdBindDescriptorSets(buffer, vk::PipelineBindPoint::graphics, triangleMat->getLayout(), 0, nytl::make_span(uboDescriptorSets[i].vkHandle()), /*dynamicOffsets*/ {});
@@ -133,13 +159,33 @@ int main(){
     });
     w.rerecordCommandBuffers();
 
+    // Add updating uniform buffers to the window's main loop
     w.bindCustomMainLoopSteps([&](VulkanState& state, uint32_t i){
         updateUniformBuffer(uniformBuffers[i], w.getTotalSize());
     });
 
 
-    // TODO gltf importer https://github.com/syoyo/tinygltf
 
+
+
+    // TODO gltf importer https://github.com/syoyo/tinygltf
+    // Potential Random Number Generator, License? Overkill? https://www.pcg-random.org
+
+    tinygltf::Model model;
+    tinygltf::TinyGLTF loader;
+    str err;
+    str warn;
+
+    bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, "../suzanne_simple.gltf");
+    //bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, argv[1]); // for binary glTF(.glb)
+
+    if (!warn.empty()) std::cout << "Warn: " << warn << std::endl;
+    if (!err.empty()) std::cout << "Error: " << err << std::endl;
+    if (!ret) std::cout << "Failed to parse glTF" << std::endl;
+
+
+
+    
 
     uint64_t frame = 0;
     do {

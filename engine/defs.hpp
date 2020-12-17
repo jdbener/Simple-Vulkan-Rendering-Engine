@@ -2,7 +2,7 @@
 // Disable the uninitialized variables in constexpr functions error
 #pragma clang diagnostic ignored "-Wc++20-extensions"
 
-#define GAME_VERSION VK_MAKE_VERSION(0, 0, 1)
+// Defines the version of the engine
 #define ENGINE_VERSION VK_MAKE_VERSION(0, 0, 1)
 
 // Forces the specified function to be inlined

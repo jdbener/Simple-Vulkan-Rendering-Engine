@@ -13,7 +13,7 @@ Resource::Ref<_Mesh<it, bit>> _Mesh<it, bit>::create(GraphicsState& state, str n
     // Create memory for the resource
     _Mesh* _new = new _Mesh(state);
     // Add a reference to the resource's memory to the ResourceManager and return a reference
-    return ResourceManager::singleton()->add<_Mesh<it, bit>>(name, *_new);
+    return ResourceManager::singleton()->add<_Mesh<it, bit>>(state, name, *_new);
 }
 
 template <typename indexType, typename bit>
@@ -42,15 +42,14 @@ Resource::Ref<_Mesh<indexType, bit>> _Mesh<indexType, bit>::create(GraphicsState
 }
 
 template <typename it, typename bit>
-typename _Mesh<it, bit>::Instance& _Mesh<it, bit>::addInstance(glm::mat4 transform, Ref<class Material>& material){
+typename Material::Instance& _Mesh<it, bit>::addInstance(glm::mat4 transform, Ref<class Material>& material){
     // If the material is not in the map...
     if(instances.find(material) == instances.end())
         // Add an empty vector
-        instances.emplace(material, std::make_pair(vpp::SubBuffer{}, std::vector<Instance>{}));
+        instances.emplace(material, std::make_pair(vpp::SubBuffer{}, std::vector<Material::Instance>{}));
 
-    // // References to the stored data elements
-    std::vector<Instance>& insts = instances[material].second;
-    // vpp::SubBuffer& buffer = instances[material].first;
+    // References to the stored data elements
+    std::vector<Material::Instance>& insts = instances[material].second;
 
     // Add the instance to the array
     insts.emplace_back(transform);
@@ -58,30 +57,29 @@ typename _Mesh<it, bit>::Instance& _Mesh<it, bit>::addInstance(glm::mat4 transfo
 }
 
 template <typename it, typename bit>
-void _Mesh<it, bit>::uploadInstanceBuffers(){
-    std::vector<std::pair<uint32_t, vpp::CommandBuffer>> runningUploads;
+std::vector<Resource::Upload> _Mesh<it, bit>::uploadInstanceBuffers(bool wait){
+    std::vector<Resource::Upload> runningUploads;
     runningUploads.reserve(instances.size());
 
     // For each unique material in instances map
-    for(std::pair<const Ref<class Material>, std::pair<vpp::SubBuffer, std::vector<Instance>>>& instanceData: instances){
+    for(std::pair<const Ref<class Material>, std::pair<vpp::SubBuffer, std::vector<Material::Instance>>>& instanceData: instances){
         // Reference the stored data elements
-        std::vector<Instance>& insts = instanceData.second.second;
+        std::vector<Material::Instance>& insts = instanceData.second.second;
         vpp::SubBuffer& buffer = instanceData.second.first;
 
         // Create a buffer large enouph to hold all of the instances for this material
-        buffer = {state.device().bufferAllocator(), insts.size() * sizeof(Instance), vk::BufferUsageBits::vertexBuffer | vk::BufferUsageBits::transferDst, (unsigned int) vk::MemoryPropertyBits::deviceLocal};
+        buffer = {state.device().bufferAllocator(), insts.size() * insts[0].byteSize(), vk::BufferUsageBits::vertexBuffer | vk::BufferUsageBits::transferDst, (unsigned int) vk::MemoryPropertyBits::deviceLocal};
 
         // Begin uploading the data to the buffer and add it to the list of running uploads
         vpp::CommandBuffer cb = state.commandPool.allocate();
         uint32_t waitID = state.fillStaging(buffer, insts, false, cb);
-        runningUploads.emplace_back(waitID, std::move(cb));
+        runningUploads.emplace_back(waitID, std::move(cb), state.device().queueSubmitter());
     }
 
-    for(auto& upload: runningUploads)
-        // Wait for all of the data that we enqueued to be copied to the GPU
-        state.device().queueSubmitter().wait(upload.first);
-
-    // The command buffers should be destroyed as part of the cleanup process
+    // If we should wait for this upload to finish, do so
+    if(wait) return Resource::waitUploads(runningUploads);
+    // If we shouldn't wait for the uploads, return references to each of them
+    return runningUploads;
 }
 
 template <typename indexType, typename bit>
@@ -92,7 +90,7 @@ void _Mesh<indexType, bit>::rerecordCommandBuffer(vpp::CommandBuffer& renderComm
         const vpp::SubBuffer& instanceBuffer = it->second.first;
         uint64_t instanceCount = it->second.second.size();
 
-        //Bind the pipeline
+        //Bind the material's pipeline
         if(!material->valid()) throw vk::VulkanError(vk::Result::errorInitializationFailed, "Can't record command buffer material: '" + material->getName() + "' is invalid.");
         vk::cmdBindPipeline(renderCommandBuffer, vk::PipelineBindPoint::graphics, material->getPipeline());
 

@@ -5,9 +5,8 @@
 #include "engine/vulkan/state.hpp"
 #include "engine/math/math.hpp"
 
-#include "resource.hpp"
+#include "material.hpp"
 
-class Material;
 
 // TODO: resource type class this inherits from?
 template <typename indexType = uint16_t, typename boneIndexType = uint8_t> // Mesh<uint16_t> and Mesh<uint32_t>
@@ -41,29 +40,6 @@ public:
     };
 
 public:
-    struct Instance {
-        glm::mat4 transform;
-
-        Instance(glm::mat4 _transform) : transform(_transform) {}
-
-        static vk::VertexInputBindingDescription getBindingDescription(const uint32_t binding = 1){
-            return {binding, sizeof(Instance), vk::VertexInputRate::instance};
-        }
-
-        static std::array<vk::VertexInputAttributeDescription, 4> getAttributeDescriptions(const uint32_t binding = 1){
-            std::array<vk::VertexInputAttributeDescription, 4> out;
-
-            // Transform takes up locations 5-8
-            out[0] = {/*location*/ 5, binding, vk::Format::r32g32b32a32Sfloat, offsetof(Instance, transform) };
-            out[1] = {/*location*/ 6, binding, vk::Format::r32g32b32a32Sfloat, uint32_t(offsetof(Instance, transform) + sizeof(transform) * 1.0/4) };
-            out[2] = {/*location*/ 7, binding, vk::Format::r32g32b32a32Sfloat, uint32_t(offsetof(Instance, transform) + sizeof(transform) * 2.0/4) };
-            out[3] = {/*location*/ 8, binding, vk::Format::r32g32b32a32Sfloat, uint32_t(offsetof(Instance, transform) + sizeof(transform) * 3.0/4) };
-
-            return out;
-        }
-    };
-
-public:
     // TODO: Implement mechanisms for sending this binding this data
     // Struct representing the ubo which will be sent to the shader
     // template <typename boneIndexType = uint8_t>
@@ -83,7 +59,7 @@ protected:
     // Reference to a vulkan state to pull command buffers from
     GraphicsState& state;
     // BST holding all of the data for the instances of this mesh
-    std::map<Ref<class Material>, std::pair<vpp::SubBuffer, std::vector<Instance>>> instances;
+    std::map<Ref<class Material>, std::pair<vpp::SubBuffer, std::vector<Material::Instance>>> instances;
     // Core Buffers
     vpp::SubBuffer vertexBuffer, indexBuffer;
     // Number of indices in the index buffer
@@ -93,34 +69,34 @@ public:
     _Mesh(GraphicsState&);
 
     /// Function which records the commands needed to render this mesh and its instances
-    ///     to the provided command buffer.
+    ///     to the provided command buffer.s
     void rerecordCommandBuffer(vpp::CommandBuffer& renderCommandBuffer) const;
 
     /// Function which adds an instance buffer to the gpu
-    Instance& addInstance(glm::mat4, Ref<class Material>&);
-    FORCE_INLINE Instance& addInstance(glm::mat4 trans, Ref<class Material>&& mat) { return addInstance(trans, mat); }
-    FORCE_INLINE Instance& addInstance(glm::mat4 trans, const str& matName) { return addInstance(trans, ResourceManager::singleton()->get<class Material>(matName)); }
-    FORCE_INLINE Instance& addInstance(glm::mat4 trans, const str&& matName) { return addInstance(trans, matName); }
+    Material::Instance& addInstance(glm::mat4, Ref<class Material>&);
+    FORCE_INLINE Material::Instance& addInstance(glm::mat4 trans, Ref<class Material>&& mat) { return addInstance(trans, mat); }
+    FORCE_INLINE Material::Instance& addInstance(glm::mat4 trans, const str& matName) { return addInstance(trans, ResourceManager::singleton()->get<class Material>(matName)); }
+    FORCE_INLINE Material::Instance& addInstance(glm::mat4 trans, const str&& matName) { return addInstance(trans, matName); }
 
     /// Function which uploads the instance buffers to the GPU
-    void uploadInstanceBuffers();
-
-
-    //Mesh& bindVertexColors();
+    std::vector<Resource::Upload> uploadInstanceBuffers(bool wait = true);
+    /// Function which uploads all of the data which this reference may need to send to the gpu
+    virtual std::vector<Resource::Upload> upload(bool wait = true){ return uploadInstanceBuffers(wait); }
 
 public:
     static Ref<_Mesh> create(GraphicsState&, const str name = "");
     static Ref<_Mesh> create(GraphicsState&, std::vector<Vertex>& vertecies, std::vector<indexType>& indecies, const str name = "");
 
     static Ref<_Mesh> load(std::istream& file) { throw StateNotProvidedException("A GraphicsState must be provided when creating a mesh."); }
-    static Ref<_Mesh> load(std::istream&& file) { return load(file); }
+    FORCE_INLINE static Ref<_Mesh> load(std::istream&& file) { return load(file); }
     static Ref<_Mesh> load(GraphicsState&, std::istream& file);
-    static Ref<_Mesh> load(GraphicsState&, std::istream&& file) { return load(file); }
+    FORCE_INLINE static Ref<_Mesh> load(GraphicsState&, std::istream&& file) { return load(file); }
 
     /// Sets up the material to use the vertex/instance infromation provided by this mesh
+    template <class instanceType = Material::Instance>
     static /*GraphicsMaterial::CreateInfo*/vpp::GraphicsPipelineInfo& bindVertexBindings(/*GraphicsMaterial::CreateInfo*/vpp::GraphicsPipelineInfo& matInfo){
-        static vk::VertexInputBindingDescription bindings[] = {Vertex::getBindingDescription(), Instance::getBindingDescription()};
-        static auto attributes = Vertex::getAttributeDescriptions() + Instance::getAttributeDescriptions();
+        static vk::VertexInputBindingDescription bindings[] = {Vertex::getBindingDescription(), instanceType::getBindingDescription()};
+        static auto attributes = Vertex::getAttributeDescriptions() + instanceType::getAttributeDescriptions();
 
         // Describe how vertices are laid out
         matInfo.vertex.vertexBindingDescriptionCount = 2;

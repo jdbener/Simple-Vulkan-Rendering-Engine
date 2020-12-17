@@ -96,6 +96,16 @@ public:
     template <class T = str_view>
     FORCE_INLINE T strip(const str_view characters = " \t\n\r") const { return str_view(*this).strip(characters); }
 
+
+    // Returns true if this string begins with the provided string
+    bool beginsWith(const str_view what) const {
+        return str_view(*this).beginsWith(what);
+    }
+    // Returns true if this string ends with the provided string
+    bool endsWith(const str_view what) const {
+        return str_view(*this).endsWith(what);
+    }
+
     /// Replaces the first instance of the specified match with the specified replacement in a copy of the string
     str replaceFirst(const str_view match, const str_view replacement){
         std::string out = *this;

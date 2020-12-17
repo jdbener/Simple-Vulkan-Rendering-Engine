@@ -1,0 +1,3 @@
+[submodule "subprojects/pcg-random"]
+	path = subprojects/pcg-random
+	url = https://github.com/imneme/pcg-cpp.git

@@ -5,6 +5,7 @@ engine_sources = [
   'common.cpp',
   'window.cpp',
   'monitor.cpp',
+  'math/transform.cpp',
   'resource/backend/resource.cpp',
   'resource/mesh.cpp',
   'resource/material.cpp',

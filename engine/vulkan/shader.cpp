@@ -2,7 +2,7 @@
 #include "common.hpp"
 
 #include <glslang/Public/ShaderLang.h>
-#include <SPIRV/GlslangToSpv.h>
+#include <glslang/SPIRV/GlslangToSpv.h>
 #include "engine/vendor/glslang/DirStackFileIncluder.h"
 
 /// Loads the specified SPIR-V file and converts it into a shader module

@@ -1,4 +1,5 @@
 -std=c++17
+-Isubprojects/pcg-random/include
 -Isubprojects/vpp/include
 -Isubprojects/nytl
 -Isubprojects/dlg/include

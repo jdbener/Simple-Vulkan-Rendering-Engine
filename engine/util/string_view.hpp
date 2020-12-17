@@ -52,6 +52,31 @@ public:
     }
     /// Removes all of the specified characters from the beginning and end of a copy of the string
     str_view strip(const str_view characters = " \t\n\r") const { return lstrip(characters).rstrip(characters); }
+
+    // Returns true if this string begins with the provided string
+    bool beginsWith(const str_view what) const {
+        // If the searched for string is longer than this string, this string can't begin with it
+        if(what.size() > size()) return false;
+
+        // Scan through the beginning of this string and determine if any chracters differ from what
+        for(int i = 0; i < what.size(); i++)
+            if(at(i) != what[i]) return false;
+
+        // If all of the characters in the length match than this string begins with the other string
+        return true;
+    }
+    // Returns true if this string ends with the provided string
+    bool endsWith(const str_view what) const {
+        // If the searched for string is longer than this string, this string can't begin with it
+        if(what.size() > size()) return false;
+
+        // Scan through the beginning of this string and determine if any chracters differ from what
+        for(int i = 0; i < what.size(); i++)
+            if(at(size() - what.size() + i) != what[i]) return false;
+
+        // If all of the characters in the length match than this string begins with the other string
+        return true;
+    }
 };
 
 #endif //__STRING_VIEW_H__

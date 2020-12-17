@@ -4,14 +4,14 @@ Resource::Ref<Material> Material::create(VulkanState& state, const str name){
     // Create memory for the resource
     Material* _new = new Material(state);
     // Add a reference to the resource's memory to the ResourceManager and return a reference
-    return ResourceManager::singleton()->add<Material>(name, *_new);
+    return ResourceManager::singleton()->add<Material>(state, name, *_new);
 }
 
 Resource::Ref<GraphicsMaterial> GraphicsMaterial::create(GraphicsState& state, const str name){
     // Create memory for the resource
     GraphicsMaterial* _new = new GraphicsMaterial(state);
     // Add a reference to the resource's memory to the ResourceManager and return a reference
-    return ResourceManager::singleton()->add<GraphicsMaterial>(name, *_new);
+    return ResourceManager::singleton()->add<GraphicsMaterial>(state, name, *_new);
 }
 
 /// Creates the pipeline create info for this material which can then be modified and eventually finalized

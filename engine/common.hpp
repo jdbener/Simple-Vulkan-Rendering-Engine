@@ -22,8 +22,7 @@
 // Enable appending vectors of the same type with the + operator
 template <typename T>
 std::vector<T> operator+(std::vector<T> a, std::vector<T> b){
-    a.reserve(a.size() + b.size());
-    for(T& cur: b) a.push_back(cur);
+    a.insert(a.end(), b.begin(), b.end());
     return a;
 }
 
@@ -68,7 +67,7 @@ std::vector<std::byte> readStream(std::istream& f, size_t start = 0, long len = 
 
 
 namespace nytl {
-    // Makes the specified variable into a span of length 1
+    /// Makes the specified variable into a span of length 1
     template <typename T>
     FORCE_INLINE nytl::span<T> make_span(T& what){
         return {&what, 1};

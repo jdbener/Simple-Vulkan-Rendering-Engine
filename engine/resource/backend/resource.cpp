@@ -3,6 +3,15 @@
 
 #include "resourceManager.hpp"
 
+std::vector<Resource::Upload> Resource::waitUploads(std::vector<Resource::Upload>& runningUploads){
+    for(auto& upload: runningUploads)
+        // Wait for all of the data that we enqueued to be copied to the GPU
+        upload.wait();
+
+    // Return an empty vector
+    return {};
+}
+
 Resource::Ref<Resource> Resource::create(const str name) {
     // Create memory for the resource
     Resource* _new = new Resource(Resource::Type::Null);

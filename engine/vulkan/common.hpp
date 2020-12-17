@@ -27,7 +27,7 @@ public:
 
 // Macro which defines how exception checking works
 #define exceptFunction(func) auto out = func();\
-    if(!out) throw vk::VulkanError(vk::Result::errorInitializationFailed, "Failed to find the specified " #func " queue!");\
+    if(!out) throw vk::VulkanError(vk::Result::errorInitializationFailed, "Failed to find the specified " #func "!");\
     return out
     /// Returns the graphics queue.
     const vpp::Queue* graphicsQueue() const { return queue(vk::QueueBits::graphics); }
